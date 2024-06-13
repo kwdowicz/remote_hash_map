@@ -65,6 +65,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
+// tests
 #[cfg(test)]
 mod tests {
     use std::time::Duration;
