@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package node_group_rpc;
+
+service NodeGroupRpc {
+  rpc AddServer(AddServerRequest) returns (AddServerResponse);
+  rpc GetServer(GetServerRequest) returns (GetServerResponse);
+}
+
+message AddServerRequest {
+  string addr = 1;
+}
+
+message AddServerResponse {
+  string result = 1;
+}
+
+message GetServerRequest {
+}
+
+message GetServerResponse {
+  repeated string result = 1;
+}
