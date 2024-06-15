@@ -8,6 +8,8 @@ prost = "0.12.6"
 tokio = { version = "1.37.0", features = ["full"] }
 tonic = "0.11.0"
 structopt = "0.3.26"
+http = "0.2.12"
+thiserror = "1.0.61"
 
 [build-dependencies]
 tonic-build = "0.11.0"
@@ -15,3 +17,7 @@ tonic-build = "0.11.0"
 [[bin]]
 name = "ng"
 path = "src/node_group.rs"
+
+[[bin]]
+name = "node"
+path = "src/node.rs"
