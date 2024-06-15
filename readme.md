@@ -1,4 +1,3 @@
-Sure, here is the content in a single cell format for easy copying:
 # Remote Hash Map
 
 This project implements a distributed node cluster management system using gRPC. The system includes two main components:
