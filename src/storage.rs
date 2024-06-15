@@ -1,6 +1,6 @@
 use std::io;
 
-use tokio::fs::{File, metadata, OpenOptions};
+use tokio::fs::{metadata, File, OpenOptions};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 const DATA_FILE: &str = "data.txt";
@@ -17,7 +17,7 @@ impl Storage {
         }
 
         Ok(Self {
-            file: Self::open().await?
+            file: Self::open().await?,
         })
     }
 

@@ -1,6 +1,6 @@
+use crate::storage::Storage;
 use std::collections::HashMap;
 use tokio::io::Result;
-use crate::storage::Storage;
 
 #[derive(Debug)]
 pub enum RhmResult {
@@ -13,10 +13,10 @@ pub enum RhmResult {
 impl RhmResult {
     pub fn value(&self) -> String {
         match self {
-            RhmResult::NewInsertOk => { "Ok".to_string() }
-            RhmResult::PreviousValue(value) => { value.to_string() }
-            RhmResult::NoKey => { "NoKey".to_string() }
-            RhmResult::Value(value) => { value.to_string() }
+            RhmResult::NewInsertOk => "Ok".to_string(),
+            RhmResult::PreviousValue(value) => value.to_string(),
+            RhmResult::NoKey => "NoKey".to_string(),
+            RhmResult::Value(value) => value.to_string(),
         }
     }
 }
@@ -29,7 +29,10 @@ pub struct Rhm {
 
 impl Rhm {
     pub async fn new() -> Result<Self> {
-        let mut rhm = Rhm { items: HashMap::new(), storage: Storage::new().await?, };
+        let mut rhm = Rhm {
+            items: HashMap::new(),
+            storage: Storage::new().await?,
+        };
         rhm.load().await?;
         Ok(rhm)
     }
@@ -53,11 +56,15 @@ impl Rhm {
             Some(old_value) => RhmResult::PreviousValue(old_value),
             None => RhmResult::NewInsertOk,
         };
-        self.storage.save(&format!("SET|{}|{}\r\n", key, value)).await?;
+        self.storage
+            .save(&format!("SET|{}|{}\r\n", key, value))
+            .await?;
         Ok(result)
     }
 
     pub async fn get(&self, key: &str) -> RhmResult {
-        self.items.get(key).map_or(RhmResult::NoKey, |v| RhmResult::Value(v.clone()))
+        self.items
+            .get(key)
+            .map_or(RhmResult::NoKey, |v| RhmResult::Value(v.clone()))
     }
 }
