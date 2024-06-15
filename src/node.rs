@@ -106,8 +106,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         addr,
     };
 
-    info!("Starting node with configuration: {:?}", node_rpc);
-
     if let Some(ng_addr) = opt.ng {
         attach_to_group(ng_addr, node_rpc.addr).await?;
     }
