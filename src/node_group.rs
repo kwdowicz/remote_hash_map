@@ -69,16 +69,16 @@ impl NodeGroupRpc for ImplNodeGroupRpc {
         let mut nodes = self.nodes.lock().await;
         match req.addr.parse::<SocketAddr>() {
             Ok(socket) => {
-                info!("Adding server: {:?}", socket);
+                info!("Adding node: {:?}", socket);
                 nodes.insert(socket.clone());
                 Ok(Response::new(AddServerResponse {
-                    result: format!("Added {} to cluster", socket),
+                    result: format!("Added {} to node group", socket),
                 }))
             }
             Err(e) => {
                 error!("Failed to add server: {}", e);
                 return Err(Status::invalid_argument(format!(
-                    "Can't add socket to cluster: {e}"
+                    "Can't add node to node group: {e}"
                 )));
             }
         }
