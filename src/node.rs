@@ -154,7 +154,7 @@ mod tests {
     #[tokio::test]
     async fn test_set_and_get() {
         let rhm = Arc::new(Mutex::new(Rhm::new().await.unwrap()));
-        let addr = "127.0.0.1:6001".parse().unwrap();
+        let addr = "127.0.0.1:6011".parse().unwrap();
         let node_rpc = TestNodeRpc { rhm: rhm.clone(), addr };
 
         let svc = NodeRpcServer::new(node_rpc);
