@@ -12,8 +12,62 @@ This project implements a distributed node cluster management system using gRPC.
 
 ## Sample usage
 
+- **Get and run the nodes and node group**:
 
+```bash
+git clone https://github.com/kwdowicz/remote_hash_map.git
+cd remote_hash_map/
 
+cargo build --release
+
+./target/release/ng
+
+./target/release/node --listen 127.0.0.1:6001 --ng 127.0.0.1:5000
+./target/release/node --listen 127.0.0.1:6002 --ng 127.0.0.1:5000
+```
+
+- **Create a client and use remote_hash_map**:
+
+**Create new project**
+```bash
+mkdir rhm_test
+cd rhm_client_test
+cargo init
+cargo add remote_hash_map
+cargo add tokio
+```
+
+**Cargo.toml**
+```Cargo.toml
+[package]
+name = "rhm_test"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+remote_hash_map = "0.0.2"
+tokio = { version = "1.38.0", features = ["rt", "rt-multi-thread", "macros"] }
+```
+
+**src/main.rs**
+```main.rs
+use remote_hash_map::RHMClient;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let mut client = RHMClient::connect("127.0.0.1:5000").await?;
+
+    client.set("name", "Daria").await?;
+    client.set("name", "Tosia").await?;
+    client.set("name", "Gabi").await?;
+
+    let result = client.get("name").await?;
+
+    println!("Name: {}", result);
+
+    Ok(())
+}
+```
 ## Getting Started
 
 ### Prerequisites
