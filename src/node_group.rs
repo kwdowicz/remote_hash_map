@@ -8,11 +8,13 @@ mod node_rpc {
 
 use crate::node_group_rpc::node_group_rpc_server::{NodeGroupRpc, NodeGroupRpcServer};
 use crate::node_group_rpc::{
-    AddServerRequest, AddServerResponse, GetServerRequest, GetServerResponse,
+    AddServerRequest, AddServerResponse, GetServerRequest, GetServerResponse, ReplicateRequest,
+    ReplicateResponse,
 };
 use crate::node_rpc::node_rpc_client::NodeRpcClient as NClient;
 use crate::node_rpc::node_rpc_client::NodeRpcClient;
 use crate::node_rpc::PingRequest;
+use log::{error, info};
 use std::collections::HashSet;
 use std::fmt::Debug;
 use std::net::SocketAddr;
@@ -23,44 +25,28 @@ use tokio::sync::Mutex;
 use tokio::time::sleep;
 use tonic::transport::{Channel, Endpoint, Error, Uri};
 use tonic::{transport::Server, Request, Response, Status};
-use log::{info, error};
 
-/// Type alias for a thread-safe shared set of nodes.
 type Nodes = Arc<Mutex<HashSet<SocketAddr>>>;
-/// Type alias for a single node, represented as a socket address.
+
 type Node = SocketAddr;
 
-/// The main implementation of the NodeGroup RPC service.
 #[derive(Debug, Clone)]
 pub struct ImplNodeGroupRpc {
-    /// The set of nodes managed by this service.
     nodes: Nodes,
 }
 
-/// Command-line options for configuring the NodeGroup service.
 #[derive(StructOpt, Debug)]
 #[structopt(name = "NodeGroup")]
 struct Opt {
-    /// The address to listen on for incoming requests.
     #[structopt(long, parse(try_from_str), default_value = "127.0.0.1:5000")]
     listen: SocketAddr,
 
-    /// The interval in seconds between pings to nodes.
-    #[structopt(long, parse(try_from_str), default_value = "1")]
+    #[structopt(long, parse(try_from_str), default_value = "30")]
     ping_sec: u64,
 }
 
 #[tonic::async_trait]
 impl NodeGroupRpc for ImplNodeGroupRpc {
-    /// Adds a server to the cluster.
-    ///
-    /// # Arguments
-    ///
-    /// * `request` - A `Request<AddServerRequest>` containing the address of the server to add.
-    ///
-    /// # Returns
-    ///
-    /// * `Response<AddServerResponse>` - A response indicating the result of the operation.
     async fn add_server(
         &self,
         request: Request<AddServerRequest>,
@@ -84,15 +70,6 @@ impl NodeGroupRpc for ImplNodeGroupRpc {
         }
     }
 
-    /// Retrieves the list of servers in the cluster.
-    ///
-    /// # Arguments
-    ///
-    /// * `request` - A `Request<GetServerRequest>`.
-    ///
-    /// # Returns
-    ///
-    /// * `Response<GetServerResponse>` - A response containing the list of server addresses.
     async fn get_server(
         &self,
         _request: Request<GetServerRequest>,
@@ -104,10 +81,20 @@ impl NodeGroupRpc for ImplNodeGroupRpc {
             result: servers_strings,
         }))
     }
+
+    async fn replicate(
+        &self,
+        request: Request<ReplicateRequest>,
+    ) -> Result<Response<ReplicateResponse>, Status> {
+        info!("Got replication request: {:?}", request);
+        let mut nodes = self.nodes.lock().await;
+        let nodes_addrs: Vec<String> = nodes.iter().map(|addr| addr.to_string()).collect();
+        info!("Nodes to replicate to: {:?}", nodes_addrs);
+        Ok(Response::new(ReplicateResponse {}))
+    }
 }
 
 impl ImplNodeGroupRpc {
-    /// Pings all nodes in the cluster asynchronously.
     async fn ping_nodes(&self) {
         let nodes = self.nodes.lock().await;
         info!("Pinging node(s): {:?}", nodes);
@@ -118,12 +105,6 @@ impl ImplNodeGroupRpc {
         }
     }
 
-    /// Pings a single node and removes it from the cluster if it doesn't respond.
-    ///
-    /// # Arguments
-    ///
-    /// * `nodes` - A reference to the shared set of nodes.
-    /// * `node` - The node to ping.
     async fn ping_node(nodes: Arc<Mutex<HashSet<Node>>>, node: Node) {
         let uri = match Uri::builder()
             .scheme("http")
@@ -171,12 +152,6 @@ impl ImplNodeGroupRpc {
         }
     }
 
-    /// Removes a node from the cluster.
-    ///
-    /// # Arguments
-    ///
-    /// * `nodes` - A reference to the shared set of nodes.
-    /// * `node` - The node to remove.
     async fn remove_node(nodes: &Arc<Mutex<HashSet<Node>>>, node: &Node) {
         let mut nodes = nodes.lock().await;
         nodes.remove(node);

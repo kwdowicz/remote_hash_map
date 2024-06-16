@@ -6,16 +6,16 @@ pub mod node_rpc {
     tonic::include_proto!("node_rpc");
 }
 
+use http::uri::Uri;
+use log::{error, info};
 use node_group_rpc::node_group_rpc_client::NodeGroupRpcClient;
 use node_group_rpc::GetServerRequest;
 use node_rpc::node_rpc_client::NodeRpcClient;
 use node_rpc::{GetRequest, SetRequest};
+use std::time::Duration;
 use tokio::time::sleep;
 use tonic::transport::Channel;
 use tonic::Request;
-use http::uri::Uri;
-use std::time::Duration;
-use log::{info, error};
 
 pub struct RHMClient {
     node_client: NodeRpcClient<Channel>,
@@ -38,13 +38,21 @@ impl RHMClient {
         Ok(Self { node_client })
     }
 
-    pub async fn set(&mut self, key: &str, value: &str) -> Result<String, Box<dyn std::error::Error>> {
+    pub async fn set(
+        &mut self,
+        key: &str,
+        value: &str,
+    ) -> Result<String, Box<dyn std::error::Error>> {
         let request = SetRequest {
             key: key.to_string(),
             value: value.to_string(),
         };
 
-        let response = self.node_client.set(Request::new(request)).await?.into_inner();
+        let response = self
+            .node_client
+            .set(Request::new(request))
+            .await?
+            .into_inner();
         Ok(response.result)
     }
 
@@ -53,7 +61,11 @@ impl RHMClient {
             key: key.to_string(),
         };
 
-        let response = self.node_client.get(Request::new(request)).await?.into_inner();
+        let response = self
+            .node_client
+            .get(Request::new(request))
+            .await?
+            .into_inner();
         Ok(response.value)
     }
 }
@@ -62,7 +74,10 @@ async fn get_node_address(node_group_addr: &str) -> Option<String> {
     let channel = match Channel::from_shared(node_group_addr.to_string()) {
         Ok(c) => c,
         Err(_) => {
-            error!("Failed to create channel for NodeGroup at {}", node_group_addr);
+            error!(
+                "Failed to create channel for NodeGroup at {}",
+                node_group_addr
+            );
             return None;
         }
     };
@@ -80,6 +95,8 @@ async fn get_node_address(node_group_addr: &str) -> Option<String> {
             let servers = response.into_inner().result;
             if !servers.is_empty() {
                 info!("Found available nodes: {:?}", servers);
+                // getting first available server (node)
+                // TODO: add some logic here
                 Some(format!("http://{}", servers[0]))
             } else {
                 error!("No nodes available in NodeGroup");

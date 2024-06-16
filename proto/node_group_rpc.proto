@@ -5,6 +5,7 @@ package node_group_rpc;
 service NodeGroupRpc {
   rpc AddServer(AddServerRequest) returns (AddServerResponse);
   rpc GetServer(GetServerRequest) returns (GetServerResponse);
+  rpc Replicate(ReplicateRequest) returns (ReplicateResponse);
 }
 
 message AddServerRequest {
@@ -20,4 +21,12 @@ message GetServerRequest {
 
 message GetServerResponse {
   repeated string result = 1;
+}
+
+message ReplicateRequest {
+  string key = 1;
+  string value = 2;
+}
+
+message ReplicateResponse {
 }

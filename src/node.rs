@@ -1,71 +1,81 @@
-/// This module handles the RPC interface for node groups.
 pub mod node_group;
-/// This module contains the generated gRPC code for node group RPC.
 pub mod node_group_rpc;
-/// This module contains the generated gRPC code for node RPC.
 pub mod node_rpc;
-/// This module provides the implementation for a remote hash map.
 pub mod rhm;
-/// This module handles storage-related functionalities.
 pub mod storage;
 
-use crate::node_group_rpc::{AddServerRequest, GetServerRequest};
+use crate::node_group_rpc::{AddServerRequest, GetServerRequest, ReplicateRequest};
 use crate::rhm::{Rhm, RhmResult};
+use log::{error, info};
 use node_group_rpc::node_group_rpc_client::NodeGroupRpcClient as NGClient;
 use node_rpc::node_rpc_server::{NodeRpc, NodeRpcServer};
-use node_rpc::{GetRequest, GetResponse, PingRequest, PingResponse, SetRequest, SetResponse};
+use node_rpc::{
+    GetRequest, GetResponse, PingRequest, PingResponse, SetRequest, SetResponse,
+};
 use std::net::SocketAddr;
 use std::sync::Arc;
 use structopt::StructOpt;
 use tokio::sync::Mutex;
-use tonic::transport::{Endpoint, Server, Uri};
+use tonic::transport::{Channel, Endpoint, Error, Server, Uri};
 use tonic::{Request, Response, Status};
-use log::{info, error};
+use crate::node_group_rpc::node_group_rpc_client::NodeGroupRpcClient;
 
-/// Command-line options for configuring the Node service.
 #[derive(StructOpt, Debug)]
 #[structopt(name = "Node")]
 struct Opt {
-    /// The address to listen on for incoming requests.
     #[structopt(long, parse(try_from_str), default_value = "127.0.0.1:6000")]
     listen: SocketAddr,
 
-    /// Optional address of the node group.
     #[structopt(long, parse(try_from_str))]
     ng: Option<SocketAddr>,
 }
 
-/// Implementation of the Node RPC service.
 #[derive(Debug)]
 pub struct ImplNodeRpc {
-    /// Remote hash map for storing key-value pairs.
     rhm: Arc<Mutex<Rhm>>,
-    /// Address of the node.
     addr: SocketAddr,
+    ng: Option<Endpoint>,
 }
 
 #[tonic::async_trait]
 impl NodeRpc for ImplNodeRpc {
-    /// Handles the set request to store a key-value pair.
     async fn set(&self, request: Request<SetRequest>) -> Result<Response<SetResponse>, Status> {
         let req = request.into_inner();
         let mut rhm = self.rhm.lock().await;
-        info!("Received set request: key = {}, value = {}", req.key, req.value);
-        let result = rhm
-            .set(&req.key, &req.value)
-            .await
-            .map_err(|e| {
-                error!("Failed to set value: {}", e);
-                Status::internal(format!("Failed to set value: {}", e))
-            })?;
+        info!(
+            "Received set request: key = {}, value = {}",
+            req.key, req.value
+        );
+        let result = rhm.set(&req.key, &req.value).await.map_err(|e| {
+            error!("Failed to set value: {}", e);
+            Status::internal(format!("Failed to set value: {}", e))
+        })?;
 
         info!("Set request successful: key = {}", req.key);
+        // TODO: now replicate this to other nodes
+        // connect to node group and send a new set command
+        match &self.ng {
+            None => (),
+            Some(ng) => {
+                info!("Will replicate: {:?}:{:?}", &req.key, &req.value);
+                match self.ng().await.ok() {
+                    None => (),
+                    Some(mut client) => {
+                        client.replicate(ReplicateRequest {
+                            key: req.key,
+                            value: req.value,
+                        }).await?;
+                    }
+                }
+            }
+        }
+
+        // Respond with value or status to client
         Ok(Response::new(SetResponse {
             result: result.value(),
         }))
     }
 
-    /// Handles the get request to retrieve a value for a given key.
     async fn get(&self, request: Request<GetRequest>) -> Result<Response<GetResponse>, Status> {
         let req = request.into_inner();
         let mut rhm = self.rhm.lock().await;
@@ -83,7 +93,6 @@ impl NodeRpc for ImplNodeRpc {
         }))
     }
 
-    /// Handles the ping request to check the node's availability.
     async fn ping(&self, _request: Request<PingRequest>) -> Result<Response<PingResponse>, Status> {
         info!("Received ping request");
         Ok(Response::new(PingResponse {
@@ -92,22 +101,51 @@ impl NodeRpc for ImplNodeRpc {
     }
 }
 
+impl ImplNodeRpc {
+    async fn ng(&self) -> Result<NodeGroupRpcClient<Channel>, Box<dyn std::error::Error>> {
+        let ng = self.ng.clone();
+        let ng = ng.ok_or("No NodeGroup found")?;
+        // let ng = ng.ok_or("No NodeGroup found")?;
+        NGClient::connect(ng).await.map_err(Into::into)
+    }
+
+    async fn attach_to_group(&self) -> Result<(), Box<dyn std::error::Error>> {
+        let mut client = self.ng().await?;
+        client
+            .add_server(AddServerRequest {
+                addr: self.addr.to_string(),
+            })
+            .await?;
+        let response = client.get_server(GetServerRequest {}).await?;
+        info!("Attached to group: {:?}", response);
+        Ok(())
+    }
+}
+
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Initialize the logger with the default level set to 'info'.
     env_logger::Builder::from_default_env()
         .filter_level(log::LevelFilter::Info)
         .init();
 
     let opt = Opt::from_args();
     let addr = opt.listen;
-    let node_rpc = ImplNodeRpc {
+    let mut node_rpc = ImplNodeRpc {
         rhm: Arc::new(Mutex::new(Rhm::new().await?)),
         addr,
+        ng: None,
     };
 
     if let Some(ng_addr) = opt.ng {
-        attach_to_group(ng_addr, node_rpc.addr).await?;
+        let uri = Uri::builder()
+            .scheme("http")
+            .authority(ng_addr.to_string())
+            .path_and_query("/")
+            .build()?;
+        let endpoint = Endpoint::from_shared(uri.to_string())?;
+        node_rpc.ng = Some(endpoint.clone());
+        node_rpc.attach_to_group().await?;
     }
 
     info!("Node listening on {}", addr);
@@ -118,36 +156,5 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .serve(addr)
         .await?;
 
-    Ok(())
-}
-
-/// Attaches the current node to a node group.
-///
-/// # Arguments
-///
-/// * `ng_addr` - The address of the node group.
-/// * `node_addr` - The address of the current node.
-///
-/// # Returns
-///
-/// * `Result<(), Box<dyn std::error::Error>>` - Result of the operation.
-async fn attach_to_group(
-    ng_addr: SocketAddr,
-    node_addr: SocketAddr,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let uri = Uri::builder()
-        .scheme("http")
-        .authority(ng_addr.to_string())
-        .path_and_query("/")
-        .build()?;
-    let endpoint = Endpoint::from_shared(uri.to_string())?;
-    let mut client = NGClient::connect(endpoint).await?;
-    client
-        .add_server(AddServerRequest {
-            addr: node_addr.to_string(),
-        })
-        .await?;
-    let response = client.get_server(GetServerRequest {}).await?;
-    info!("Attached to group: {:?}", response);
     Ok(())
 }
