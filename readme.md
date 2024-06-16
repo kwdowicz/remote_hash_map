@@ -10,6 +10,10 @@ This project implements a distributed node cluster management system using gRPC.
 - **Key-Value Storage**: Store and retrieve key-value pairs in individual nodes.
 - **Health Checking**: Regularly ping nodes to check their health and remove unresponsive nodes.
 
+## Sample usage
+
+
+
 ## Getting Started
 
 ### Prerequisites

@@ -4,4 +4,4 @@ pub mod node_rpc;
 pub mod rhm;
 pub mod storage;
 
-pub use client::RemoteHashMapClient;
+pub use client::RHMClient;

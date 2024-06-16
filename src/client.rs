@@ -17,12 +17,12 @@ use http::uri::Uri;
 use std::time::Duration;
 use log::{info, error};
 
-pub struct RemoteHashMapClient {
+pub struct RHMClient {
     node_client: NodeRpcClient<Channel>,
 }
 
-impl RemoteHashMapClient {
-    pub async fn connect_to_node_group(node_group_addr: &str) -> Result<Self, Box<dyn std::error::Error>> {
+impl RHMClient {
+    pub async fn connect(node_group_addr: &str) -> Result<Self, Box<dyn std::error::Error>> {
         // Connect to NodeGroup and get a list of nodes
         let node_addr = match get_node_address(node_group_addr).await {
             Some(addr) => addr,
@@ -38,7 +38,7 @@ impl RemoteHashMapClient {
         Ok(Self { node_client })
     }
 
-    pub async fn set_value(&mut self, key: &str, value: &str) -> Result<String, Box<dyn std::error::Error>> {
+    pub async fn set(&mut self, key: &str, value: &str) -> Result<String, Box<dyn std::error::Error>> {
         let request = SetRequest {
             key: key.to_string(),
             value: value.to_string(),
@@ -48,7 +48,7 @@ impl RemoteHashMapClient {
         Ok(response.result)
     }
 
-    pub async fn get_value(&mut self, key: &str) -> Result<String, Box<dyn std::error::Error>> {
+    pub async fn get(&mut self, key: &str) -> Result<String, Box<dyn std::error::Error>> {
         let request = GetRequest {
             key: key.to_string(),
         };

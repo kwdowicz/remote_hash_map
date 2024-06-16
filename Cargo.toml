@@ -1,7 +1,10 @@
 [package]
 name = "remote_hash_map"
-version = "0.1.0"
+version = "0.0.1"
 edition = "2021"
+authors = ["Kamil Wdowicz <kwdowicz@gmail.com>"]
+description = "Remote hash map"
+repository = "https://github.com/kwdowicz/remote_hash_map"
 
 [dependencies]
 prost = "0.12.6"
