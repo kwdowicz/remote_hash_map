@@ -5,6 +5,7 @@ edition = "2021"
 authors = ["Kamil Wdowicz <kwdowicz@gmail.com>"]
 description = "Remote hash map"
 repository = "https://github.com/kwdowicz/remote_hash_map"
+license = "MIT OR Apache-2.0"
 
 [dependencies]
 prost = "0.12.6"
