@@ -13,6 +13,9 @@ pub mod rhm;
 #[path = "storage.rs"]
 pub mod storage;
 
+#[path = "utils.rs"]
+pub mod utils;
+
 use crate::node_group_rpc::node_group_rpc_client::NodeGroupRpcClient;
 use crate::node_group_rpc::{AddServerRequest, GetServerRequest, ReplicateRequest};
 use crate::rhm::{Rhm, RhmResult};
