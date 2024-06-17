@@ -1,22 +1,32 @@
+#[path = "node_group.rs"]
 pub mod node_group;
+
+#[path = "node_group_rpc.rs"]
 pub mod node_group_rpc;
+
+#[path = "node_rpc.rs"]
 pub mod node_rpc;
+
+#[path = "rhm.rs"]
 pub mod rhm;
+
+#[path = "storage.rs"]
 pub mod storage;
 
 use crate::node_group_rpc::node_group_rpc_client::NodeGroupRpcClient;
 use crate::node_group_rpc::{AddServerRequest, GetServerRequest, ReplicateRequest};
 use crate::rhm::{Rhm, RhmResult};
-use log::{error, info};
-use node_group_rpc::node_group_rpc_client::NodeGroupRpcClient as NGClient;
-use node_rpc::node_rpc_server::{NodeRpc, NodeRpcServer};
-use node_rpc::{GetRequest, GetResponse, PingRequest, PingResponse, SetRequest, SetResponse};
+use crate::node_group_rpc::node_group_rpc_client::NodeGroupRpcClient as NGClient;
+use crate::node_rpc::node_rpc_server::{NodeRpc, NodeRpcServer};
+use crate::node_rpc::{GetRequest, GetResponse, PingRequest, PingResponse, SetRequest, SetResponse};
 use std::net::SocketAddr;
 use std::sync::Arc;
 use structopt::StructOpt;
 use tokio::sync::Mutex;
 use tonic::transport::{Channel, Endpoint, Error, Server, Uri};
 use tonic::{Request, Response, Status};
+use log::{info, error, LevelFilter, Log, Metadata, Record};
+
 
 pub type RhmError = Box<dyn std::error::Error>;
 
@@ -34,7 +44,7 @@ struct Opt {
 pub struct ImplNodeRpc {
     rhm: Arc<Mutex<Rhm>>,
     addr: SocketAddr,
-    ng: Option<Endpoint>,
+    pub ng: Option<Endpoint>,
 }
 
 #[tonic::async_trait]
@@ -99,12 +109,20 @@ impl ImplNodeRpc {
         NGClient::connect(ng).await.map_err(Into::into)
     }
 
-    async fn attach_to_group(&self) -> Result<(), RhmError> {
+    pub async fn attach_to_group(&self) -> Result<(), RhmError> {
         let mut client = self.ng().await?;
         client.add_server(AddServerRequest { addr: self.addr.to_string() }).await?;
         let response = client.get_server(GetServerRequest {}).await?;
         info!("Attached to group: {:?}", response);
         Ok(())
+    }
+    
+    pub fn new(rhm: Rhm, addr: SocketAddr) -> Self {
+        Self {
+            rhm: Arc::new(Mutex::new(rhm)),
+            addr,
+            ng: None,
+        }
     }
 }
 
@@ -114,11 +132,8 @@ async fn main() -> Result<(), RhmError> {
 
     let opt = Opt::from_args();
     let addr = opt.listen;
-    let mut node_rpc = ImplNodeRpc {
-        rhm: Arc::new(Mutex::new(Rhm::new(&addr.to_string()).await?)),
-        addr,
-        ng: None,
-    };
+    let mut rhm = Rhm::new(&addr.to_string()).await?;
+    let mut node_rpc = ImplNodeRpc::new(rhm, addr);
 
     if let Some(ng_addr) = opt.ng {
         let uri = Uri::builder().scheme("http").authority(ng_addr.to_string()).path_and_query("/").build()?;

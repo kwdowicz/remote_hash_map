@@ -1,9 +1,13 @@
+#[path = "utils.rs"]
+mod utils;
+
 use std::io;
 
 use tokio::fs::{metadata, File, OpenOptions};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
-// const DATA_FILE: &str = "data.txt";
+use utils::data_file;
+
 
 #[derive(Debug)]
 pub struct Storage {
@@ -12,7 +16,7 @@ pub struct Storage {
 
 impl Storage {
     pub async fn new(id: &str) -> tokio::io::Result<Self> {
-        let data_file = format!("data-{}.txt", id);
+        let data_file = data_file(id);
         if Self::not_exists(&data_file).await? {
             Self::create(&data_file).await?
         }

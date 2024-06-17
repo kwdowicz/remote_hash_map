@@ -187,6 +187,12 @@ impl ImplNodeGroupRpc {
         nodes.remove(node);
         info!("Removed node: {}", node);
     }
+
+    pub fn new() -> Self {
+        Self {
+            nodes: Arc::new(Mutex::new(HashSet::new())),
+        }
+    }
 }
 
 #[tokio::main]
@@ -195,9 +201,7 @@ async fn main() -> Result<(), RhmError> {
 
     let opt = Opt::from_args();
     let addr = opt.listen;
-    let node_group_rpc = ImplNodeGroupRpc {
-        nodes: Arc::new(Mutex::new(HashSet::new())),
-    };
+    let node_group_rpc = ImplNodeGroupRpc::new();
 
     // Spawn a task to ping nodes at regular intervals.
     let ng_for_pinging = node_group_rpc.clone();
