@@ -38,7 +38,7 @@ impl Storage {
     }
 
     pub async fn open(data_file: &str) -> tokio::io::Result<File> {
-        let mut file = OpenOptions::new().append(true).read(true).open(data_file).await?;
+        let file = OpenOptions::new().append(true).read(true).open(data_file).await?;
         Ok(file)
     }
 

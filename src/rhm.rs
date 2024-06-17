@@ -38,7 +38,7 @@ impl Rhm {
     }
 
     async fn load(&mut self) -> Result<()> {
-        let mut contents = self.storage.load().await?;
+        let contents = self.storage.load().await?;
         for line in contents.lines() {
             let mut parts = line.splitn(3, '|');
             match (parts.next(), parts.next(), parts.next()) {

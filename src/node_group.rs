@@ -9,23 +9,25 @@ mod node_rpc {
 use crate::node_group_rpc::node_group_rpc_server::{NodeGroupRpc, NodeGroupRpcServer};
 use crate::node_group_rpc::{AddServerRequest, AddServerResponse, GetServerRequest, GetServerResponse, ReplicateRequest, ReplicateResponse};
 use crate::node_rpc::node_rpc_client::NodeRpcClient as NClient;
-use crate::node_rpc::node_rpc_client::NodeRpcClient;
 use crate::node_rpc::{PingRequest, SetRequest};
 use log::{error, info};
 use std::collections::HashSet;
 use std::fmt::Debug;
-use std::net::{AddrParseError, SocketAddr};
+use std::net::{SocketAddr};
 use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
 use structopt::StructOpt;
 use tokio::sync::Mutex;
 use tokio::time::sleep;
-use tonic::transport::{Channel, Endpoint, Error, Uri};
+use tonic::transport::{Endpoint, Uri};
 use tonic::{transport::Server, Request, Response, Status};
 
 type Nodes = Arc<Mutex<HashSet<SocketAddr>>>;
+
+#[allow(dead_code)]
 type Node = SocketAddr;
+
 pub type RhmError = Box<dyn std::error::Error>;
 
 #[derive(Debug, Clone)]
@@ -64,7 +66,7 @@ impl NodeGroupRpc for ImplNodeGroupRpc {
     }
 
     async fn get_server(&self, _request: Request<GetServerRequest>) -> Result<Response<GetServerResponse>, Status> {
-        let mut nodes = self.nodes.lock().await;
+        let nodes = self.nodes.lock().await;
         let servers_strings: Vec<String> = nodes.iter().map(|addr| addr.to_string()).collect();
         info!("Retrieved servers: {:?}", servers_strings);
         Ok(Response::new(GetServerResponse { result: servers_strings }))

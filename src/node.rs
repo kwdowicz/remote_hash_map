@@ -26,9 +26,9 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use structopt::StructOpt;
 use tokio::sync::Mutex;
-use tonic::transport::{Channel, Endpoint, Error, Server, Uri};
+use tonic::transport::{Channel, Endpoint, Server, Uri};
 use tonic::{Request, Response, Status};
-use log::{info, error, LevelFilter, Log, Metadata, Record};
+use log::{info, error};
 
 
 pub type RhmError = Box<dyn std::error::Error>;
@@ -88,7 +88,7 @@ impl NodeRpc for ImplNodeRpc {
 
     async fn get(&self, request: Request<GetRequest>) -> Result<Response<GetResponse>, Status> {
         let req = request.into_inner();
-        let mut rhm = self.rhm.lock().await;
+        let rhm = self.rhm.lock().await;
         info!("Received get request: key = {}", req.key);
         let result = rhm.get(&req.key).await;
 
@@ -135,7 +135,7 @@ async fn main() -> Result<(), RhmError> {
 
     let opt = Opt::from_args();
     let addr = opt.listen;
-    let mut rhm = Rhm::new(&addr.to_string()).await?;
+    let rhm = Rhm::new(&addr.to_string()).await?;
     let mut node_rpc = ImplNodeRpc::new(rhm, addr);
 
     if let Some(ng_addr) = opt.ng {

@@ -7,13 +7,11 @@ pub mod node_rpc {
 }
 
 use http::uri::Uri;
-use log::{error, info};
+use log::{info};
 use node_group_rpc::node_group_rpc_client::NodeGroupRpcClient;
 use node_group_rpc::GetServerRequest;
 use node_rpc::node_rpc_client::NodeRpcClient;
 use node_rpc::{GetRequest, SetRequest};
-use std::time::Duration;
-use tokio::time::sleep;
 use tonic::transport::{Channel, Endpoint};
 use tonic::Request;
 
