@@ -18,6 +18,8 @@ use tokio::sync::Mutex;
 use tonic::transport::{Channel, Endpoint, Error, Server, Uri};
 use tonic::{Request, Response, Status};
 
+pub type RhmError = Box<dyn std::error::Error>;
+
 #[derive(StructOpt, Debug)]
 #[structopt(name = "Node")]
 struct Opt {
@@ -50,7 +52,7 @@ impl NodeRpc for ImplNodeRpc {
         if !req.replication {
             match &self.ng {
                 None => (),
-                Some(ng) => {
+                Some(_ng) => {
                     info!("Sending request for replication: {:?}:{:?}", &req.key, &req.value);
                     match self.ng().await.ok() {
                         None => error!("Can't replicate"),
@@ -92,13 +94,13 @@ impl NodeRpc for ImplNodeRpc {
 }
 
 impl ImplNodeRpc {
-    async fn ng(&self) -> Result<NodeGroupRpcClient<Channel>, Box<dyn std::error::Error>> {
+    async fn ng(&self) -> Result<NodeGroupRpcClient<Channel>, RhmError> {
         let ng = self.ng.clone();
         let ng = ng.ok_or("No NodeGroup found")?;
         NGClient::connect(ng).await.map_err(Into::into)
     }
 
-    async fn attach_to_group(&self) -> Result<(), Box<dyn std::error::Error>> {
+    async fn attach_to_group(&self) -> Result<(), RhmError> {
         let mut client = self.ng().await?;
         client.add_server(AddServerRequest { addr: self.addr.to_string() }).await?;
         let response = client.get_server(GetServerRequest {}).await?;
@@ -108,7 +110,7 @@ impl ImplNodeRpc {
 }
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> Result<(), RhmError> {
     env_logger::Builder::from_default_env().filter_level(log::LevelFilter::Info).init();
 
     let opt = Opt::from_args();

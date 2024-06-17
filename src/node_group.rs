@@ -25,8 +25,8 @@ use tonic::transport::{Channel, Endpoint, Error, Uri};
 use tonic::{transport::Server, Request, Response, Status};
 
 type Nodes = Arc<Mutex<HashSet<SocketAddr>>>;
-
 type Node = SocketAddr;
+pub type RhmError = Box<dyn std::error::Error>;
 
 #[derive(Debug, Clone)]
 pub struct ImplNodeGroupRpc {
@@ -190,7 +190,7 @@ impl ImplNodeGroupRpc {
 }
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> Result<(), RhmError> {
     env_logger::Builder::from_default_env().filter_level(log::LevelFilter::Info).init();
 
     let opt = Opt::from_args();

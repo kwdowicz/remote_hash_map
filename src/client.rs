@@ -17,12 +17,14 @@ use tokio::time::sleep;
 use tonic::transport::{Channel, Endpoint};
 use tonic::Request;
 
+pub type RhmError = Box<dyn std::error::Error>;
+
 pub struct RHMClient {
     node_client: NodeRpcClient<Channel>,
 }
 
 impl RHMClient {
-    pub async fn connect(node_group_addr: &str) -> Result<Self, Box<dyn std::error::Error>> {
+    pub async fn connect(node_group_addr: &str) -> Result<Self, RhmError> {
         // Connect to NodeGroup and get a list of nodes
         let node_addr = match get_node_address(node_group_addr).await {
             Some(addr) => addr,
@@ -37,7 +39,7 @@ impl RHMClient {
         Ok(Self { node_client })
     }
 
-    pub async fn set(&mut self, key: &str, value: &str) -> Result<String, Box<dyn std::error::Error>> {
+    pub async fn set(&mut self, key: &str, value: &str) -> Result<String, RhmError> {
         let request = SetRequest {
             key: key.to_string(),
             value: value.to_string(),
@@ -48,7 +50,7 @@ impl RHMClient {
         Ok(response.result)
     }
 
-    pub async fn get(&mut self, key: &str) -> Result<String, Box<dyn std::error::Error>> {
+    pub async fn get(&mut self, key: &str) -> Result<String, RhmError> {
         let request = GetRequest { key: key.to_string() };
 
         let response = self.node_client.get(Request::new(request)).await?.into_inner();
