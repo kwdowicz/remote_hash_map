@@ -38,34 +38,21 @@ impl RHMClient {
         Ok(Self { node_client })
     }
 
-    pub async fn set(
-        &mut self,
-        key: &str,
-        value: &str,
-    ) -> Result<String, Box<dyn std::error::Error>> {
+    pub async fn set(&mut self, key: &str, value: &str) -> Result<String, Box<dyn std::error::Error>> {
         let request = SetRequest {
             key: key.to_string(),
             value: value.to_string(),
+            replication: false,
         };
 
-        let response = self
-            .node_client
-            .set(Request::new(request))
-            .await?
-            .into_inner();
+        let response = self.node_client.set(Request::new(request)).await?.into_inner();
         Ok(response.result)
     }
 
     pub async fn get(&mut self, key: &str) -> Result<String, Box<dyn std::error::Error>> {
-        let request = GetRequest {
-            key: key.to_string(),
-        };
+        let request = GetRequest { key: key.to_string() };
 
-        let response = self
-            .node_client
-            .get(Request::new(request))
-            .await?
-            .into_inner();
+        let response = self.node_client.get(Request::new(request)).await?.into_inner();
         Ok(response.value)
     }
 }
@@ -74,10 +61,7 @@ async fn get_node_address(node_group_addr: &str) -> Option<String> {
     let channel = match Channel::from_shared(node_group_addr.to_string()) {
         Ok(c) => c,
         Err(_) => {
-            error!(
-                "Failed to create channel for NodeGroup at {}",
-                node_group_addr
-            );
+            error!("Failed to create channel for NodeGroup at {}", node_group_addr);
             return None;
         }
     };

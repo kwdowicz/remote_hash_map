@@ -28,10 +28,10 @@ pub struct Rhm {
 }
 
 impl Rhm {
-    pub async fn new() -> Result<Self> {
+    pub async fn new(id: &str) -> Result<Self> {
         let mut rhm = Rhm {
             items: HashMap::new(),
-            storage: Storage::new().await?,
+            storage: Storage::new(id).await?,
         };
         rhm.load().await?;
         Ok(rhm)
@@ -56,15 +56,11 @@ impl Rhm {
             Some(old_value) => RhmResult::PreviousValue(old_value),
             None => RhmResult::NewInsertOk,
         };
-        self.storage
-            .save(&format!("SET|{}|{}\r\n", key, value))
-            .await?;
+        self.storage.save(&format!("SET|{}|{}\r\n", key, value)).await?;
         Ok(result)
     }
 
     pub async fn get(&self, key: &str) -> RhmResult {
-        self.items
-            .get(key)
-            .map_or(RhmResult::NoKey, |v| RhmResult::Value(v.clone()))
+        self.items.get(key).map_or(RhmResult::NoKey, |v| RhmResult::Value(v.clone()))
     }
 }

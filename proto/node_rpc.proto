@@ -11,6 +11,7 @@ service NodeRpc {
 message SetRequest {
   string key = 1;
   string value = 2;
+  bool replication = 3;
 }
 
 message SetResponse {

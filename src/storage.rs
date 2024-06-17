@@ -3,7 +3,7 @@ use std::io;
 use tokio::fs::{metadata, File, OpenOptions};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
-const DATA_FILE: &str = "data.txt";
+// const DATA_FILE: &str = "data.txt";
 
 #[derive(Debug)]
 pub struct Storage {
@@ -11,35 +11,30 @@ pub struct Storage {
 }
 
 impl Storage {
-    pub async fn new() -> tokio::io::Result<Self> {
-        if Self::not_exists().await? {
-            Self::create().await?
+    pub async fn new(id: &str) -> tokio::io::Result<Self> {
+        let data_file = format!("data-{}.txt", id);
+        if Self::not_exists(&data_file).await? {
+            Self::create(&data_file).await?
         }
 
-        Ok(Self {
-            file: Self::open().await?,
-        })
+        Ok(Self { file: Self::open(&data_file).await? })
     }
 
-    async fn not_exists() -> std::io::Result<bool> {
-        match metadata(DATA_FILE).await {
+    async fn not_exists(data_file: &str) -> std::io::Result<bool> {
+        match metadata(data_file).await {
             Ok(_) => Ok(false),
             Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(true),
             Err(e) => Err(e),
         }
     }
 
-    async fn create() -> tokio::io::Result<()> {
-        File::create(DATA_FILE).await?;
+    async fn create(data_file: &str) -> tokio::io::Result<()> {
+        File::create(data_file).await?;
         Ok(())
     }
 
-    pub async fn open() -> tokio::io::Result<File> {
-        let mut file = OpenOptions::new()
-            .append(true)
-            .read(true)
-            .open(DATA_FILE)
-            .await?;
+    pub async fn open(data_file: &str) -> tokio::io::Result<File> {
+        let mut file = OpenOptions::new().append(true).read(true).open(data_file).await?;
         Ok(file)
     }
 

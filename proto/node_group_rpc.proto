@@ -26,6 +26,7 @@ message GetServerResponse {
 message ReplicateRequest {
   string key = 1;
   string value = 2;
+  string source = 3;
 }
 
 message ReplicateResponse {
