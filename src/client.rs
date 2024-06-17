@@ -14,7 +14,7 @@ use node_rpc::node_rpc_client::NodeRpcClient;
 use node_rpc::{GetRequest, SetRequest};
 use std::time::Duration;
 use tokio::time::sleep;
-use tonic::transport::Channel;
+use tonic::transport::{Channel, Endpoint};
 use tonic::Request;
 
 pub struct RHMClient {
@@ -27,7 +27,6 @@ impl RHMClient {
         let node_addr = match get_node_address(node_group_addr).await {
             Some(addr) => addr,
             None => {
-                error!("No available nodes in the NodeGroup");
                 return Err("No available nodes in the NodeGroup".into());
             }
         };
@@ -58,18 +57,13 @@ impl RHMClient {
 }
 
 async fn get_node_address(node_group_addr: &str) -> Option<String> {
-    let channel = match Channel::from_shared(node_group_addr.to_string()) {
-        Ok(c) => c,
-        Err(_) => {
-            error!("Failed to create channel for NodeGroup at {}", node_group_addr);
-            return None;
-        }
-    };
+    let uri = Uri::builder().scheme("http").authority(node_group_addr).path_and_query("/").build().expect("Unable to build uri");
+    let endpoint = Endpoint::from_shared(uri.to_string()).expect("Unable to build endpoint");
 
-    let mut client = match NodeGroupRpcClient::connect(channel).await {
+    let mut client = match NodeGroupRpcClient::connect(endpoint).await {
         Ok(c) => c,
-        Err(_) => {
-            error!("Failed to connect to NodeGroup at {}", node_group_addr);
+        Err(e) => {
+            println!("Failed to connect to NodeGroup at {} {}", node_group_addr, e);
             return None;
         }
     };
@@ -79,16 +73,15 @@ async fn get_node_address(node_group_addr: &str) -> Option<String> {
             let servers = response.into_inner().result;
             if !servers.is_empty() {
                 info!("Found available nodes: {:?}", servers);
-                // getting first available server (node)
-                // TODO: add some logic here
-                Some(format!("http://{}", servers[0]))
+                // TODO: getting first available server (node) add some logic here
+                Some(format!("{}", servers[0]))
             } else {
-                error!("No nodes available in NodeGroup");
+                println!("No nodes available in NodeGroup");
                 None
             }
         }
         Err(e) => {
-            error!("Failed to get nodes from NodeGroup: {}", e);
+            println!("Failed to get nodes from NodeGroup: {}", e);
             None
         }
     }
