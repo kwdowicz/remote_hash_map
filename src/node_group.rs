@@ -80,10 +80,7 @@ impl NodeGroupRpc for ImplNodeGroupRpc {
             Err(_) => return Err(Status::invalid_argument("Invalid source address")),
         };
 
-        let nodes_to_replicate: Vec<String> = nodes.iter()
-            .map(|addr| addr.to_string())
-            .filter(|addr| *addr != source_addr.to_string())
-            .collect();
+        let nodes_to_replicate: Vec<String> = nodes.iter().map(|addr| addr.to_string()).filter(|addr| *addr != source_addr.to_string()).collect();
 
         info!("Nodes to replicate to: {:?}", nodes_to_replicate);
 
@@ -93,7 +90,7 @@ impl NodeGroupRpc for ImplNodeGroupRpc {
                 Err(e) => {
                     error!("Failed to build URI: {:?}", e);
                     continue;
-                },
+                }
             };
 
             let endpoint = match Endpoint::from_shared(uri.to_string()) {
@@ -101,19 +98,22 @@ impl NodeGroupRpc for ImplNodeGroupRpc {
                 Err(e) => {
                     error!("Failed to create endpoint: {:?}", e);
                     continue;
-                },
+                }
             };
 
             match NClient::connect(endpoint).await {
                 Ok(mut client) => {
-                    if let Err(e) = client.set(SetRequest {
-                        key: request.key.clone(),
-                        value: request.value.clone(),
-                        replication: true,
-                    }).await {
+                    if let Err(e) = client
+                        .set(SetRequest {
+                            key: request.key.clone(),
+                            value: request.value.clone(),
+                            replication: true,
+                        })
+                        .await
+                    {
                         error!("Failed to set key-value pair: {:?}", e);
                     }
-                },
+                }
                 Err(e) => {
                     error!("Failed to connect to node {}: {:?}", node, e);
                     if let Ok(socket) = SocketAddr::from_str(node) {

@@ -47,26 +47,25 @@ impl NodeRpc for ImplNodeRpc {
             error!("Failed to set value: {}", e);
             Status::internal(format!("Failed to set value: {}", e))
         })?;
-
         info!("Set request successful: key = {}", req.key);
-        if !req.replication {
-            match &self.ng {
-                None => (),
-                Some(_ng) => {
-                    info!("Sending request for replication: {:?}:{:?}", &req.key, &req.value);
-                    match self.ng().await.ok() {
-                        None => error!("Can't replicate"),
-                        Some(mut client) => {
-                            client
-                                .replicate(ReplicateRequest {
-                                    key: req.key,
-                                    value: req.value,
-                                    source: self.addr.to_string(),
-                                })
-                                .await?;
-                        }
-                    }
-                }
+
+        // if replication is false, means that message came from client, not node group
+        // then we are sending it to be replicated
+        if req.replication || self.ng.is_none() {
+            return Ok(Response::new(SetResponse { result: result.value() }));
+        }
+
+        info!("Sending request for replication: {:?}:{:?}", &req.key, &req.value);
+        match self.ng().await.ok() {
+            None => error!("Can't replicate"),
+            Some(mut client) => {
+                client
+                    .replicate(ReplicateRequest {
+                        key: req.key,
+                        value: req.value,
+                        source: self.addr.to_string(),
+                    })
+                    .await?;
             }
         }
 
