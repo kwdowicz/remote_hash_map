@@ -74,7 +74,7 @@ async fn get_node_address(node_group_addr: &str) -> Option<String> {
             if !servers.is_empty() {
                 info!("Found available nodes: {:?}", servers);
                 // TODO: getting first available server (node) add some logic here
-                Some(format!("{}", servers[0]))
+                Some(format!("http://{}", servers[0]))
             } else {
                 println!("No nodes available in NodeGroup");
                 None
