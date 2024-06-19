@@ -6,9 +6,10 @@ This project implements a distributed node cluster management system using gRPC.
 
 ## Features
 
-- **Node Management**: Add and retrieve nodes from the cluster.
 - **Key-Value Storage**: Store and retrieve key-value pairs in individual nodes.
+- **Node Management**: Add and retrieve nodes from the node group (cluster).
 - **Health Checking**: Regularly ping nodes to check their health and remove unresponsive nodes.
+- **Replication**: Replicate hash map between nodes.
 
 ## Sample usage
 
@@ -35,18 +36,6 @@ cd rhm_client_test
 cargo init
 cargo add remote_hash_map
 cargo add tokio
-```
-
-**Cargo.toml**
-```Cargo.toml
-[package]
-name = "rhm_test"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-remote_hash_map = "0.0.2"
-tokio = { version = "1.38.0", features = ["rt", "rt-multi-thread", "macros"] }
 ```
 
 **src/main.rs**
