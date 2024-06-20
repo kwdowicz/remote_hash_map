@@ -1,3 +1,25 @@
+#[macro_export]
+macro_rules! rhm {
+    ($var_name:ident, $ip:expr, $port:expr) => {
+        let mut $var_name = match Client::connect(&format!("{}:{}", $ip, $port)).await {
+            Ok(client) => client,
+            Err(e) => {
+                eprintln!("Failed to connect to {}:{}: {}", $ip, $port, e);
+                return Err(e.into());
+            }
+        };
+    };
+    ($var_name:ident, $address:expr) => {
+        let mut $var_name = match Client::connect($address).await {
+            Ok(client) => client,
+            Err(e) => {
+                eprintln!("Failed to connect to {}: {}", $address, e);
+                return Err(e.into());
+            }
+        };
+    };
+}
+
 pub mod node_group_rpc {
     tonic::include_proto!("node_group_rpc");
 }
