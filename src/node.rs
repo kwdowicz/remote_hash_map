@@ -130,6 +130,7 @@ impl ImplNodeRpc {
 }
 
 #[tokio::main]
+#[allow(dead_code)]
 async fn main() -> Result<(), RhmError> {
     env_logger::Builder::from_default_env().filter_level(log::LevelFilter::Info).init();
 

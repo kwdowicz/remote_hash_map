@@ -39,9 +39,11 @@ pub struct ImplNodeGroupRpc {
 #[structopt(name = "NodeGroup")]
 struct Opt {
     #[structopt(long, parse(try_from_str), default_value = "127.0.0.1:5000")]
+    #[allow(dead_code)]
     listen: SocketAddr,
 
     #[structopt(long, parse(try_from_str), default_value = "30")]
+    #[allow(dead_code)]
     ping_sec: u64,
 }
 
@@ -132,6 +134,7 @@ impl NodeGroupRpc for ImplNodeGroupRpc {
 }
 
 impl ImplNodeGroupRpc {
+    #[allow(dead_code)]
     async fn ping_nodes(&self) {
         let nodes = self.nodes.lock().await;
         info!("Pinging node(s): {:?}", nodes);
@@ -142,6 +145,7 @@ impl ImplNodeGroupRpc {
         }
     }
 
+    #[allow(dead_code)]
     async fn ping_node(nodes: Arc<Mutex<HashSet<Node>>>, node: Node) {
         let uri = match Uri::builder().scheme("http").authority(node.to_string()).path_and_query("/").build() {
             Ok(uri) => uri,
@@ -184,6 +188,7 @@ impl ImplNodeGroupRpc {
         }
     }
 
+    #[allow(dead_code)]
     async fn remove_node(nodes: &Arc<Mutex<HashSet<Node>>>, node: &Node) {
         let mut nodes = nodes.lock().await;
         nodes.remove(node);
@@ -198,6 +203,7 @@ impl ImplNodeGroupRpc {
 }
 
 #[tokio::main]
+#[allow(dead_code)]
 async fn main() -> Result<(), RhmError> {
     env_logger::Builder::from_default_env().filter_level(log::LevelFilter::Info).init();
 
