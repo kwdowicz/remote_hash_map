@@ -1,6 +1,5 @@
 // tests/end_to_end.rs
 
-use http::Uri;
 use remote_hash_map::node::ImplNodeRpc;
 use remote_hash_map::node_group::ImplNodeGroupRpc;
 use remote_hash_map::node_group_rpc::node_group_rpc_server::NodeGroupRpcServer;
@@ -10,14 +9,14 @@ use remote_hash_map::utils::data_file;
 use std::fs;
 use std::net::SocketAddr;
 use tokio::sync::oneshot;
-use tonic::transport::{Endpoint, Server};
+use tonic::transport::{Server};
+use remote_hash_map::node::utils::get_endpoint;
 
 async fn create_node(node_ip_port: &str, ng_ip_port: &str) -> ImplNodeRpc {
     let node_addr: SocketAddr = node_ip_port.parse().unwrap();
     let rhm = Rhm::new(&node_addr.to_string()).await.unwrap();
     let mut node_rpc = ImplNodeRpc::new(rhm, node_addr);
-    let uri = Uri::builder().scheme("http").authority(ng_ip_port.to_string()).path_and_query("/").build().unwrap();
-    let endpoint = Endpoint::from_shared(uri.to_string()).unwrap();
+    let endpoint = get_endpoint(ng_ip_port).unwrap();
     node_rpc.ng = Some(endpoint.clone());
     node_rpc.attach_to_group().await.unwrap();
     node_rpc
@@ -28,9 +27,9 @@ async fn test_end_to_end() {
     let _ = env_logger::builder().is_test(true).try_init();
 
     // Start NodeGroup server
-    let ng_ip_port = "127.0.0.1:5000";
-    let node1_ip_port = "127.0.0.1:6001";
-    let node2_ip_port = "127.0.0.1:6002";
+    let ng_ip_port = "127.0.0.1:7000";
+    let node1_ip_port = "127.0.0.1:7001";
+    let node2_ip_port = "127.0.0.1:7002";
 
     let node_group_addr: SocketAddr = ng_ip_port.parse().unwrap();
     let node_group_rpc = ImplNodeGroupRpc::new();

@@ -6,13 +6,13 @@ pub mod node_rpc {
     tonic::include_proto!("node_rpc");
 }
 
-use http::uri::Uri;
 use node_group_rpc::node_group_rpc_client::NodeGroupRpcClient;
 use node_group_rpc::GetServerRequest;
 use node_rpc::node_rpc_client::NodeRpcClient;
 use node_rpc::{GetRequest, SetRequest};
-use tonic::transport::{Channel, Endpoint};
+use tonic::transport::{Channel};
 use tonic::Request;
+use crate::utils::get_endpoint;
 
 pub type RhmError = Box<dyn std::error::Error>;
 
@@ -51,8 +51,7 @@ impl Client {
 
 #[warn(dead_code)]
 async fn get_node_address(node_group_addr: &str) -> Result<String, RhmError> {
-    let uri = Uri::builder().scheme("http").authority(node_group_addr).path_and_query("/").build()?;
-    let endpoint = Endpoint::from_shared(uri.to_string())?;
+    let endpoint = get_endpoint(node_group_addr)?;
 
     let mut ng = NodeGroupRpcClient::connect(endpoint).await?;
 

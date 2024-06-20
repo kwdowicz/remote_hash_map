@@ -27,8 +27,9 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use structopt::StructOpt;
 use tokio::sync::Mutex;
-use tonic::transport::{Channel, Endpoint, Server, Uri};
+use tonic::transport::{Channel, Endpoint, Server};
 use tonic::{Request, Response, Status};
+use crate::utils::get_endpoint;
 
 pub type RhmError = Box<dyn std::error::Error>;
 
@@ -81,7 +82,6 @@ impl NodeRpc for ImplNodeRpc {
             }
         }
 
-        // Respond with value or status to client
         Ok(Response::new(SetResponse { result: result.value() }))
     }
 
@@ -139,15 +139,13 @@ async fn main() -> Result<(), RhmError> {
     let mut node_rpc = ImplNodeRpc::new(rhm, addr);
 
     if let Some(ng_addr) = opt.ng {
-        let uri = Uri::builder().scheme("http").authority(ng_addr.to_string()).path_and_query("/").build()?;
-        let endpoint = Endpoint::from_shared(uri.to_string())?;
+        let endpoint = get_endpoint(&ng_addr.to_string())?;
         node_rpc.ng = Some(endpoint.clone());
         node_rpc.attach_to_group().await?;
     }
 
     info!("Node listening on {}", addr);
 
-    // Start the gRPC server.
     Server::builder().add_service(NodeRpcServer::new(node_rpc)).serve(addr).await?;
 
     Ok(())

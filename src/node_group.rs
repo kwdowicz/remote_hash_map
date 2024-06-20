@@ -6,29 +6,42 @@ mod node_rpc {
     tonic::include_proto!("node_rpc");
 }
 
+#[path = "utils.rs"]
+pub mod utils;
+
 use crate::node_group_rpc::node_group_rpc_server::{NodeGroupRpc, NodeGroupRpcServer};
 use crate::node_group_rpc::{AddServerRequest, AddServerResponse, GetServerRequest, GetServerResponse, ReplicateRequest, ReplicateResponse};
 use crate::node_rpc::node_rpc_client::NodeRpcClient as NClient;
 use crate::node_rpc::{PingRequest, SetRequest};
-use log::{error, info};
+use log::{error, info, warn};
 use std::collections::HashSet;
-use std::fmt::Debug;
 use std::net::SocketAddr;
-use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
 use structopt::StructOpt;
 use tokio::sync::Mutex;
 use tokio::time::sleep;
-use tonic::transport::{Endpoint, Uri};
 use tonic::{transport::Server, Request, Response, Status};
+use utils::get_endpoint;
+use std::error::Error;
+use std::fmt;
+
+#[allow(dead_code)]
+#[derive(Debug)]
+struct PingError(String);
+
+impl fmt::Display for PingError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl Error for PingError {}
 
 type Nodes = Arc<Mutex<HashSet<SocketAddr>>>;
 
 #[allow(dead_code)]
 type Node = SocketAddr;
-
-pub type RhmError = Box<dyn std::error::Error>;
 
 #[derive(Debug, Clone)]
 pub struct ImplNodeGroupRpc {
@@ -38,11 +51,11 @@ pub struct ImplNodeGroupRpc {
 #[derive(StructOpt, Debug)]
 #[structopt(name = "NodeGroup")]
 struct Opt {
-    #[structopt(long, parse(try_from_str), default_value = "127.0.0.1:5000")]
+    #[structopt(long, default_value = "127.0.0.1:5000")]
     #[allow(dead_code)]
     listen: SocketAddr,
 
-    #[structopt(long, parse(try_from_str), default_value = "30")]
+    #[structopt(long, default_value = "30")]
     #[allow(dead_code)]
     ping_sec: u64,
 }
@@ -52,26 +65,25 @@ impl NodeGroupRpc for ImplNodeGroupRpc {
     async fn add_server(&self, request: Request<AddServerRequest>) -> Result<Response<AddServerResponse>, Status> {
         let req = request.into_inner();
         let mut nodes = self.nodes.lock().await;
-        match req.addr.parse::<SocketAddr>() {
-            Ok(socket) => {
-                info!("Adding node: {:?}", socket);
-                nodes.insert(socket.clone());
-                Ok(Response::new(AddServerResponse {
+        req.addr.parse::<SocketAddr>()
+            .map(|socket| {
+                info!("Adding node: {}", socket);
+                nodes.insert(socket);
+                Response::new(AddServerResponse {
                     result: format!("Added {} to node group", socket),
-                }))
-            }
-            Err(e) => {
+                })
+            })
+            .map_err(|e| {
                 error!("Failed to add server: {}", e);
-                return Err(Status::invalid_argument(format!("Can't add node to node group: {e}")));
-            }
-        }
+                Status::invalid_argument(format!("Can't add node to node group: {}", e))
+            })
     }
 
     async fn get_server(&self, _request: Request<GetServerRequest>) -> Result<Response<GetServerResponse>, Status> {
         let nodes = self.nodes.lock().await;
-        let servers_strings: Vec<String> = nodes.iter().map(|addr| addr.to_string()).collect();
-        info!("Retrieved servers: {:?}", servers_strings);
-        Ok(Response::new(GetServerResponse { result: servers_strings }))
+        let servers: Vec<String> = nodes.iter().map(ToString::to_string).collect();
+        info!("Retrieved servers: {:?}", servers);
+        Ok(Response::new(GetServerResponse { result: servers }))
     }
 
     async fn replicate(&self, request: Request<ReplicateRequest>) -> Result<Response<ReplicateResponse>, Status> {
@@ -79,52 +91,20 @@ impl NodeGroupRpc for ImplNodeGroupRpc {
 
         let mut nodes = self.nodes.lock().await;
         let request = request.into_inner();
-        let source_addr: SocketAddr = match request.source.parse() {
-            Ok(addr) => addr,
-            Err(_) => return Err(Status::invalid_argument("Invalid source address")),
-        };
+        let source_addr: SocketAddr = request.source.parse().map_err(|_| Status::invalid_argument("Invalid source address"))?;
 
-        let nodes_to_replicate: Vec<String> = nodes.iter().map(|addr| addr.to_string()).filter(|addr| *addr != source_addr.to_string()).collect();
+        let nodes_to_replicate: Vec<String> = nodes.iter()
+            .filter(|&addr| *addr != source_addr)
+            .map(ToString::to_string)
+            .collect();
 
         info!("Nodes to replicate to: {:?}", nodes_to_replicate);
 
-        for node in nodes_to_replicate.iter() {
-            let uri = match Uri::builder().scheme("http").authority(node.as_str()).path_and_query("/").build() {
-                Ok(uri) => uri,
-                Err(e) => {
-                    error!("Failed to build URI: {:?}", e);
-                    continue;
-                }
-            };
-
-            let endpoint = match Endpoint::from_shared(uri.to_string()) {
-                Ok(endpoint) => endpoint,
-                Err(e) => {
-                    error!("Failed to create endpoint: {:?}", e);
-                    continue;
-                }
-            };
-
-            match NClient::connect(endpoint).await {
-                Ok(mut client) => {
-                    if let Err(e) = client
-                        .set(SetRequest {
-                            key: request.key.clone(),
-                            value: request.value.clone(),
-                            replication: true,
-                        })
-                        .await
-                    {
-                        error!("Failed to set key-value pair: {:?}", e);
-                    }
-                }
-                Err(e) => {
-                    error!("Failed to connect to node {}: {:?}", node, e);
-                    if let Ok(socket) = SocketAddr::from_str(node) {
-                        nodes.retain(|&x| x != socket);
-                    } else {
-                        error!("Failed to parse node address: {}", node);
-                    }
+        for node in &nodes_to_replicate {
+            if let Err(e) = self.replicate_to_node(node, &request.key, &request.value).await {
+                warn!("Failed to replicate to node {}: {}", node, e);
+                if let Ok(socket) = node.parse() {
+                    nodes.remove(&socket);
                 }
             }
         }
@@ -141,58 +121,43 @@ impl ImplNodeGroupRpc {
 
         for node in nodes.iter().cloned() {
             let nodes_clone = self.nodes.clone();
-            tokio::spawn(Self::ping_node(nodes_clone, node));
-        }
-    }
-
-    #[allow(dead_code)]
-    async fn ping_node(nodes: Arc<Mutex<HashSet<Node>>>, node: Node) {
-        let uri = match Uri::builder().scheme("http").authority(node.to_string()).path_and_query("/").build() {
-            Ok(uri) => uri,
-            Err(_) => {
-                error!("Failed to build URI for node: {}", node);
-                Self::remove_node(&nodes, &node).await;
-                return;
-            }
-        };
-
-        let endpoint = match Endpoint::from_shared(uri.to_string()) {
-            Ok(endpoint) => endpoint,
-            Err(_) => {
-                error!("Failed to create endpoint for node: {}", node);
-                Self::remove_node(&nodes, &node).await;
-                return;
-            }
-        };
-
-        let mut connection = match NClient::connect(endpoint).await {
-            Ok(connection) => connection,
-            Err(_) => {
-                error!("Failed to connect to node: {}", node);
-                Self::remove_node(&nodes, &node).await;
-                return;
-            }
-        };
-
-        match connection.ping(PingRequest {}).await {
-            Ok(response) => {
-                if response.into_inner().result != "Pong" {
-                    error!("Invalid ping response from node: {}", node);
-                    Self::remove_node(&nodes, &node).await;
+            tokio::spawn(async move {
+                if let Err(e) = Self::ping_node(node).await {
+                    error!("Failed to ping node {}: {}", node, e);
+                    Self::remove_node(&nodes_clone, &node).await;
                 }
-            }
-            Err(_) => {
-                error!("Failed to ping node: {}", node);
-                Self::remove_node(&nodes, &node).await;
-            }
+            });
         }
     }
 
     #[allow(dead_code)]
-    async fn remove_node(nodes: &Arc<Mutex<HashSet<Node>>>, node: &Node) {
+    async fn ping_node(node: Node) -> Result<(), PingError> {
+        let endpoint = get_endpoint(&node.to_string()).map_err(|e| PingError(e.to_string()))?;
+        let mut connection = NClient::connect(endpoint).await.map_err(|e| PingError(e.to_string()))?;
+        let response = connection.ping(PingRequest {}).await.map_err(|e| PingError(e.to_string()))?;
+
+        if response.into_inner().result != "Pong" {
+            return Err(PingError("Invalid ping response".into()));
+        }
+        Ok(())
+    }
+
+    #[allow(dead_code)]
+    async fn remove_node(nodes: &Nodes, node: &Node) {
         let mut nodes = nodes.lock().await;
         nodes.remove(node);
         info!("Removed node: {}", node);
+    }
+
+    async fn replicate_to_node(&self, node: &str, key: &str, value: &str) -> Result<(), Box<dyn std::error::Error>> {
+        let endpoint = get_endpoint(node)?;
+        let mut client = NClient::connect(endpoint).await?;
+        client.set(SetRequest {
+            key: key.to_string(),
+            value: value.to_string(),
+            replication: true,
+        }).await?;
+        Ok(())
     }
 
     pub fn new() -> Self {
@@ -204,14 +169,15 @@ impl ImplNodeGroupRpc {
 
 #[tokio::main]
 #[allow(dead_code)]
-async fn main() -> Result<(), RhmError> {
-    env_logger::Builder::from_default_env().filter_level(log::LevelFilter::Info).init();
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    env_logger::Builder::from_default_env()
+        .filter_level(log::LevelFilter::Info)
+        .init();
 
     let opt = Opt::from_args();
     let addr = opt.listen;
     let node_group_rpc = ImplNodeGroupRpc::new();
 
-    // Spawn a task to ping nodes at regular intervals.
     let ng_for_pinging = node_group_rpc.clone();
     tokio::spawn(async move {
         loop {
@@ -222,8 +188,10 @@ async fn main() -> Result<(), RhmError> {
 
     info!("NodeGroup listening on {}", addr);
 
-    // Start the gRPC server.
-    Server::builder().add_service(NodeGroupRpcServer::new(node_group_rpc)).serve(addr).await?;
+    Server::builder()
+        .add_service(NodeGroupRpcServer::new(node_group_rpc))
+        .serve(addr)
+        .await?;
 
     Ok(())
 }
