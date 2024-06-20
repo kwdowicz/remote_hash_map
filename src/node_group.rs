@@ -13,7 +13,7 @@ use crate::node_rpc::{PingRequest, SetRequest};
 use log::{error, info};
 use std::collections::HashSet;
 use std::fmt::Debug;
-use std::net::{SocketAddr};
+use std::net::SocketAddr;
 use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;

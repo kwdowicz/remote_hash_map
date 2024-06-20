@@ -7,4 +7,4 @@ pub mod node;
 pub mod node_group;
 pub mod utils;
 
-pub use client::RHMClient;
+pub use client::Client;

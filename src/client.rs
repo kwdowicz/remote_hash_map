@@ -7,7 +7,6 @@ pub mod node_rpc {
 }
 
 use http::uri::Uri;
-use log::{info};
 use node_group_rpc::node_group_rpc_client::NodeGroupRpcClient;
 use node_group_rpc::GetServerRequest;
 use node_rpc::node_rpc_client::NodeRpcClient;
@@ -17,24 +16,18 @@ use tonic::Request;
 
 pub type RhmError = Box<dyn std::error::Error>;
 
-pub struct RHMClient {
+pub struct Client {
     node_client: NodeRpcClient<Channel>,
 }
 
-impl RHMClient {
-    pub async fn connect(node_group_addr: &str) -> Result<Self, RhmError> {
-        // Connect to NodeGroup and get a list of nodes
-        let node_addr = match get_node_address(node_group_addr).await {
-            Some(addr) => addr,
-            None => {
-                return Err("No available nodes in the NodeGroup".into());
-            }
-        };
 
-        // Connect to the first available node
-        let node_client = NodeRpcClient::connect(node_addr).await?;
-
-        Ok(Self { node_client })
+impl Client {
+    pub async fn connect(ng_addr: &str) -> Result<Self, RhmError> {
+        let node_address = get_node_address(ng_addr).await?;
+        let node_client = NodeRpcClient::connect(node_address).await?;
+        Ok(Self {
+            node_client,
+        })
     }
 
     pub async fn set(&mut self, key: &str, value: &str) -> Result<String, RhmError> {
@@ -56,33 +49,19 @@ impl RHMClient {
     }
 }
 
-async fn get_node_address(node_group_addr: &str) -> Option<String> {
-    let uri = Uri::builder().scheme("http").authority(node_group_addr).path_and_query("/").build().expect("Unable to build uri");
-    let endpoint = Endpoint::from_shared(uri.to_string()).expect("Unable to build endpoint");
+#[warn(dead_code)]
+async fn get_node_address(node_group_addr: &str) -> Result<String, RhmError> {
+    let uri = Uri::builder().scheme("http").authority(node_group_addr).path_and_query("/").build()?;
+    let endpoint = Endpoint::from_shared(uri.to_string())?;
 
-    let mut client = match NodeGroupRpcClient::connect(endpoint).await {
-        Ok(c) => c,
-        Err(e) => {
-            println!("Failed to connect to NodeGroup at {} {}", node_group_addr, e);
-            return None;
-        }
-    };
+    let mut ng = NodeGroupRpcClient::connect(endpoint).await?;
 
-    match client.get_server(Request::new(GetServerRequest {})).await {
-        Ok(response) => {
-            let servers = response.into_inner().result;
-            if !servers.is_empty() {
-                info!("Found available nodes: {:?}", servers);
-                // TODO: getting first available server (node) add some logic here
-                Some(format!("http://{}", servers[0]))
-            } else {
-                println!("No nodes available in NodeGroup");
-                None
-            }
-        }
-        Err(e) => {
-            println!("Failed to get nodes from NodeGroup: {}", e);
-            None
-        }
+    let response = ng.get_server(Request::new(GetServerRequest {})).await?;
+    let servers = response.into_inner().result;
+
+    if servers.is_empty() {
+        Err("No nodes found".into())
+    } else {
+        Ok(format!("http://{}", servers[0]))
     }
 }

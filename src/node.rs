@@ -17,19 +17,18 @@ pub mod storage;
 pub mod utils;
 
 use crate::node_group_rpc::node_group_rpc_client::NodeGroupRpcClient;
-use crate::node_group_rpc::{AddServerRequest, GetServerRequest, ReplicateRequest};
-use crate::rhm::{Rhm, RhmResult};
 use crate::node_group_rpc::node_group_rpc_client::NodeGroupRpcClient as NGClient;
+use crate::node_group_rpc::{AddServerRequest, GetServerRequest, ReplicateRequest};
 use crate::node_rpc::node_rpc_server::{NodeRpc, NodeRpcServer};
 use crate::node_rpc::{GetRequest, GetResponse, PingRequest, PingResponse, SetRequest, SetResponse};
+use crate::rhm::{Rhm, RhmResult};
+use log::{error, info};
 use std::net::SocketAddr;
 use std::sync::Arc;
 use structopt::StructOpt;
 use tokio::sync::Mutex;
 use tonic::transport::{Channel, Endpoint, Server, Uri};
 use tonic::{Request, Response, Status};
-use log::{info, error};
-
 
 pub type RhmError = Box<dyn std::error::Error>;
 
@@ -119,7 +118,7 @@ impl ImplNodeRpc {
         info!("Attached to group: {:?}", response);
         Ok(())
     }
-    
+
     pub fn new(rhm: Rhm, addr: SocketAddr) -> Self {
         Self {
             rhm: Arc::new(Mutex::new(rhm)),

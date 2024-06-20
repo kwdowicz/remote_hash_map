@@ -1,16 +1,16 @@
 // tests/end_to_end.rs
 
-use tokio::sync::oneshot;
-use tonic::transport::{Endpoint, Server};
+use http::Uri;
 use remote_hash_map::node::ImplNodeRpc;
 use remote_hash_map::node_group::ImplNodeGroupRpc;
-use remote_hash_map::node_rpc::node_rpc_server::NodeRpcServer;
 use remote_hash_map::node_group_rpc::node_group_rpc_server::NodeGroupRpcServer;
+use remote_hash_map::node_rpc::node_rpc_server::NodeRpcServer;
 use remote_hash_map::rhm::Rhm;
 use remote_hash_map::utils::data_file;
-use std::net::SocketAddr;
 use std::fs;
-use http::Uri;
+use std::net::SocketAddr;
+use tokio::sync::oneshot;
+use tonic::transport::{Endpoint, Server};
 
 async fn create_node(node_ip_port: &str, ng_ip_port: &str) -> ImplNodeRpc {
     let node_addr: SocketAddr = node_ip_port.parse().unwrap();
@@ -87,7 +87,7 @@ async fn test_end_to_end() {
     tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
 
     // Test client
-    let mut client = remote_hash_map::RHMClient::connect(&format!("{}", ng_ip_port)).await.unwrap();
+    let mut client = remote_hash_map::Client::connect(&format!("{}", ng_ip_port)).await.unwrap();
 
     // Test setting a fresh value
     let key = "test_key";

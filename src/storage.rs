@@ -8,7 +8,6 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 use utils::data_file;
 
-
 #[derive(Debug)]
 pub struct Storage {
     file: File,
