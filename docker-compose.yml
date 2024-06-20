@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  node-app:
+    build:
+      context: .
+      dockerfile: Dockerfile.node
+    ports:
+      - "6000:6000"
+    environment:
+      - NG_ADDRESS=ng-app:6000
+    depends_on:
+      - ng-app
+
+  ng-app:
+    build:
+      context: .
+      dockerfile: Dockerfile.ng
+    ports:
+      - "5000:5000"

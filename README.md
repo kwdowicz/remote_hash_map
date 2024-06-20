@@ -135,6 +135,14 @@ If you want to use the group (cluster) functionality, follow these steps:
     cargo run --bin node -- --listen 127.0.0.1:6677 --ng 127.0.0.1:6001
     cargo run --bin node -- --listen 127.0.0.1:6675 --ng 127.0.0.1:6001
     ```
+### Using docker
+
+```sh
+docker build -t remote_hash_map .
+docker network create --subnet=192.168.0.0/16 my_network
+docker run --name ng --network my_network --ip 192.168.0.3 remote_hash_map ng
+docker run --name node --network my_network --ip 192.168.0.4 -e NG_ADDRESS="192.168.0.3:5000" remote_hash_map node
+```
 
 ### Logging
 

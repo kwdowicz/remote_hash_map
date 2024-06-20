@@ -35,6 +35,10 @@ COPY proto ./proto
 # Copy the build script
 COPY build.rs ./
 
+# Copy the entrypoint script and set permissions
+COPY entrypoint.sh ./
+RUN chmod +x ./entrypoint.sh
+
 # Set necessary environment variables
 ENV OUT_DIR=/usr/src/app/target
 
@@ -48,7 +52,9 @@ RUN protoc --proto_path=proto --rust_out=$OUT_DIR proto/*.proto
 RUN cargo build --release
 
 # Expose the port 6000 and 5000
-EXPOSE 6000 5000 5001 5002 5003 5004
+EXPOSE 5000 6000
 
 # Run the compiled binary with the specified arguments
 ENTRYPOINT ["/usr/src/app/entrypoint.sh"]
+#ENTRYPOINT ["/bin/sh"]
+#CMD ["-c", "while :; do sleep 10; done"]
