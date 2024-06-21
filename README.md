@@ -1,168 +1,154 @@
+Certainly! I'll reorganize and improve your README file to make it more structured and informative. Here's an enhanced version:
+
+```markdown
 # Remote Hash Map
 
-This project implements a distributed node cluster management system using gRPC. The system includes two main components:
-1. **Node**: Represents individual nodes in the cluster, capable of storing key-value pairs and responding to ping requests.
-2. **NodeGroup**: Manages a group of nodes, handles adding and retrieving nodes, and regularly pings nodes to ensure they are responsive.
+A distributed node cluster management system using gRPC, implementing a replicated key-value store.
+
+## Table of Contents
+
+- [Features](#features)
+- [Architecture](#architecture)
+- [Getting Started](#getting-started)
+  - [Prerequisites](#prerequisites)
+  - [Installation](#installation)
+- [Usage](#usage)
+  - [Running the Node Group](#running-the-node-group)
+  - [Running Individual Nodes](#running-individual-nodes)
+  - [Using the Client](#using-the-client)
+- [Docker Support](#docker-support)
+- [Configuration](#configuration)
+- [Logging](#logging)
+- [Troubleshooting](#troubleshooting)
+- [Contributing](#contributing)
+- [License](#license)
 
 ## Features
 
-- **Key-Value Storage**: Store and retrieve key-value pairs in individual nodes.
-- **Node Management**: Add and retrieve nodes from the node group (cluster).
-- **Health Checking**: Regularly ping nodes to check their health and remove unresponsive nodes.
-- **Replication**: Replicate hash map between nodes.
+- Distributed key-value storage
+- Node cluster management
+- Health checking via regular pinging
+- Data replication across nodes
+- Configurable ping intervals
+- Docker support for easy deployment
 
-## Sample usage
+## Architecture
 
-- **Get and run the nodes and node group**:
+The system consists of two main components:
 
-```bash
-git clone https://github.com/kwdowicz/remote_hash_map.git
-cd remote_hash_map/
+1. **Node**: Individual servers capable of storing key-value pairs and responding to ping requests.
+2. **NodeGroup**: A manager for the node cluster, handling node addition, retrieval, and health monitoring.
 
-cargo build --release
-
-./target/release/ng
-
-./target/release/node --listen 127.0.0.1:6001 --ng 127.0.0.1:5000
-./target/release/node --listen 127.0.0.1:6002 --ng 127.0.0.1:5000
-```
-
-- **Create a client and use remote_hash_map**:
-
-**Create new project**
-```bash
-mkdir rhm_test
-cd rhm_client_test
-cargo init
-cargo add remote_hash_map
-cargo add tokio
-```
-
-**src/main.rs**
-```main.rs
-use remote_hash_map::RHMClient;
-
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut client = RHMClient::connect("127.0.0.1:5000").await?;
-
-    client.set("name", "Daria").await?;
-    client.set("name", "Tosia").await?;
-    client.set("name", "Gabi").await?;
-
-    let result = client.get("name").await?;
-
-    println!("Name: {}", result);
-
-    Ok(())
-}
-```
 ## Getting Started
 
 ### Prerequisites
 
-- Rust (with `cargo` package manager)
-- `protoc` (Protocol Buffers compiler) for gRPC
+- Rust (with Cargo package manager)
+- protoc (Protocol Buffers compiler) for gRPC
+- Docker (optional, for containerized deployment)
 
-### Building the Project
+### Installation
 
-To compile the project, run:
-
-```sh
-cargo build --release
-```
-
-This will build the project and produce the executables in the `target/release` directory.
-
-### Running the Project
-
-#### Run a Single Node on Default Port
-
-To run a single node using the default port, execute:
-
-```sh
-cargo run --bin node
-```
-
-#### Run a Node on a Specified Port
-
-To run a node on a specified port, use the `--listen` option:
-
-```sh
-cargo run --bin node -- --listen 127.0.0.1:4567
-```
-
-#### Use Group (Cluster) Functionality
-
-If you want to use the group (cluster) functionality, follow these steps:
-
-1. **Run NodeGroup**: Start the NodeGroup on a specified port:
-
-    ```sh
-    cargo run --bin ng -- --listen 127.0.0.1:6001
-    ```
-
-2. **Run Nodes and Attach to the Group**: Start as many nodes as you wish and attach them to the NodeGroup:
-
-    ```sh
-    cargo run --bin node -- --listen 127.0.0.1:6677 --ng 127.0.0.1:6001
-    cargo run --bin node -- --listen 127.0.0.1:6675 --ng 127.0.0.1:6001
-    ```
-3. **Pinging is configurable**:
-   
-   ```sh
-   cargo run --bin ng -- --listen 127.0.0.1:6001 --ping-sec 4
-   #ping every 4 seconds
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/kwdowicz/remote_hash_map.git
+   cd remote_hash_map
    ```
 
-### Detailed Steps
+2. Build the project:
+   ```bash
+   cargo build --release
+   ```
 
-1. **Compile the Project**: Ensure you have Rust and `cargo` installed, then compile the project:
+## Usage
 
-    ```sh
-    cargo build --release
-    ```
+### Running the Node Group
 
-2. **Run NodeGroup**: Start the NodeGroup service to manage the cluster:
+Start the NodeGroup service:
 
-    ```sh
-    cargo run --bin ng -- --listen 127.0.0.1:6001
-    ```
+```bash
+./target/release/ng --listen 127.0.0.1:5000
+```
 
-3. **Run Nodes**: Start individual nodes and attach them to the NodeGroup:
+### Running Individual Nodes
 
-    ```sh
-    cargo run --bin node -- --listen 127.0.0.1:6677 --ng 127.0.0.1:6001
-    cargo run --bin node -- --listen 127.0.0.1:6675 --ng 127.0.0.1:6001
-    ```
-### Using docker
+Run nodes and connect them to the NodeGroup:
 
-```sh
+```bash
+./target/release/node --listen 127.0.0.1:6001 --ng 127.0.0.1:5000
+./target/release/node --listen 127.0.0.1:6002 --ng 127.0.0.1:5000
+```
+
+### Using the Client
+
+1. Create a new project:
+   ```bash
+   mkdir rhm_test && cd rhm_test
+   cargo init
+   cargo add remote_hash_map tokio
+   ```
+
+2. Add the following to `src/main.rs`:
+   ```rust
+   use remote_hash_map::RHMClient;
+
+   #[tokio::main]
+   async fn main() -> Result<(), Box<dyn std::error::Error>> {
+       let mut client = RHMClient::connect("127.0.0.1:5000").await?;
+
+       client.set("name", "Daria").await?;
+       client.set("name", "Tosia").await?;
+       client.set("name", "Gabi").await?;
+
+       let result = client.get("name").await?;
+       println!("Name: {}", result);
+
+       Ok(())
+   }
+   ```
+
+3. Run the client:
+   ```bash
+   cargo run
+   ```
+
+## Docker Support
+
+Build and run using Docker:
+
+```bash
 docker build -t remote_hash_map .
 docker network create --subnet=192.168.0.0/16 my_network
 docker run --name ng --network my_network --ip 192.168.0.3 remote_hash_map ng
 docker run --name node --network my_network --ip 192.168.0.4 -e NG_ADDRESS="192.168.0.3:5000" remote_hash_map node
 ```
 
-### Logging
+## Configuration
 
-The project uses `env_logger` for logging. By default, the log level is set to `info`. To see the log output, simply run the commands as specified. If you need more detailed logs (e.g., `debug` level), set the `RUST_LOG` environment variable:
+- Ping interval can be configured for the NodeGroup:
+  ```bash
+  ./target/release/ng --listen 127.0.0.1:5000 --ping-sec 4
+  ```
 
-```sh
-RUST_LOG=debug cargo run --bin node -- --listen 127.0.0.1:4567
+## Logging
+
+The project uses `env_logger`. Set the `RUST_LOG` environment variable for different log levels:
+
+```bash
+RUST_LOG=debug ./target/release/node --listen 127.0.0.1:6001 --ng 127.0.0.1:5000
 ```
 
-### Troubleshooting
+## Troubleshooting
 
-- Ensure that all necessary dependencies are installed and properly configured.
-- Verify that the ports you are using are not blocked by any firewall or used by other services.
-- Check the log output for any errors or warnings that might indicate what is going wrong.
+- Ensure all dependencies are installed and properly configured.
+- Verify that specified ports are not in use or blocked by firewalls.
+- Check log output for errors or warnings.
 
-### Contributing
+## Contributing
 
-Contributions are welcome! Please submit a pull request or open an issue to discuss any changes or improvements.
+Contributions are welcome! Please submit a pull request or open an issue to discuss proposed changes or improvements.
 
-### License
+## License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for more details.
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 ```
