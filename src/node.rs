@@ -28,17 +28,27 @@ use crate::node_group_rpc::{AddServerRequest, GetServerRequest, ReplicateRequest
 use crate::node_rpc::node_rpc_server::{NodeRpc, NodeRpcServer};
 use crate::node_rpc::{GetRequest, GetResponse, PingRequest, PingResponse, SetRequest, SetResponse};
 use crate::rhm::{Rhm, RhmResult};
-use log::{error, info, debug, warn};
+use crate::utils::get_endpoint;
+use log::{debug, error, info, warn};
 use std::net::SocketAddr;
 use std::sync::Arc;
 use structopt::StructOpt;
+use thiserror::Error;
 use tokio::sync::Mutex;
 use tonic::transport::{Channel, Endpoint, Server};
 use tonic::{Request, Response, Status};
-use crate::utils::get_endpoint;
 
-/// Custom error type for RHM operations
-pub type RhmError = Box<dyn std::error::Error>;
+#[derive(Error, Debug)]
+pub enum NodeError {
+    #[error("RHM operation failed: {0}")]
+    RhmError(String),
+    #[error("Node group communication failed: {0}")]
+    NodeGroupError(String),
+    #[error("Tonic transport error: {0}")]
+    TonicError(#[from] tonic::transport::Error),
+    #[error("Internal error: {0}")]
+    InternalError(String),
+}
 
 /// Command-line options for the node
 #[derive(StructOpt, Debug)]
@@ -74,19 +84,14 @@ impl NodeRpc for ImplNodeRpc {
         })?;
         info!("Set request successful: key = {}", req.key);
 
-        // If replication is false, it means the message came from a client, not the node group
-        // In this case, we send it to be replicated
         if req.replication || self.ng.is_none() {
             debug!("Skipping replication for key: {}", req.key);
             return Ok(Response::new(SetResponse { result: result.value() }));
         }
 
         info!("Sending request for replication: key = {}, value = {}", &req.key, &req.value);
-        match self.ng().await.ok() {
-            None => {
-                warn!("Can't replicate: NodeGroup not available");
-            },
-            Some(mut client) => {
+        match self.ng().await {
+            Ok(mut client) => {
                 debug!("Sending replication request to NodeGroup");
                 client
                     .replicate(ReplicateRequest {
@@ -94,8 +99,12 @@ impl NodeRpc for ImplNodeRpc {
                         value: req.value.clone(),
                         source: self.addr.to_string(),
                     })
-                    .await?;
+                    .await
+                    .map_err(|e| Status::internal(format!("Replication failed: {}", e)))?;
                 info!("Replication request sent successfully for key: {}", req.key);
+            },
+            Err(e) => {
+                warn!("Can't replicate: NodeGroup not available: {}", e);
             }
         }
 
@@ -118,32 +127,35 @@ impl NodeRpc for ImplNodeRpc {
     }
 
     /// Handle a ping request
-    async fn ping(&self, _request: Request<PingRequest>) -> Result<Response<PingResponse>, Status> {
-        info!("Received ping request");
+    async fn ping(&self, request: Request<PingRequest>) -> Result<Response<PingResponse>, Status> {
+        info!("Received ping request from: {:?}", request.into_inner());
         Ok(Response::new(PingResponse { result: "Pong".to_string() }))
     }
 }
 
 impl ImplNodeRpc {
     /// Get a connection to the NodeGroup
-    async fn ng(&self) -> Result<NodeGroupRpcClient<Channel>, RhmError> {
+    async fn ng(&self) -> Result<NodeGroupRpcClient<Channel>, NodeError> {
         let ng = self.ng.clone();
-        let ng = ng.ok_or("No NodeGroup found")?;
+        let ng = ng.ok_or(NodeError::NodeGroupError("No NodeGroup found".to_string()))?;
         debug!("Connecting to NodeGroup at {:?}", ng);
-        NGClient::connect(ng).await.map_err(Into::into)
+        NGClient::connect(ng).await.map_err(NodeError::TonicError)
     }
 
     /// Attach this node to the NodeGroup
-    pub async fn attach_to_group(&self) -> Result<(), RhmError> {
+    pub async fn attach_to_group(&self) -> Result<(), NodeError> {
         info!("Attaching to NodeGroup");
         let mut client = self.ng().await?;
-        client.add_server(AddServerRequest { addr: self.addr.to_string() }).await?;
-        let response = client.get_server(GetServerRequest {}).await?;
+        client.add_server(AddServerRequest { addr: self.addr.to_string() })
+            .await
+            .map_err(|e| NodeError::NodeGroupError(e.to_string()))?;
+        let response = client.get_server(GetServerRequest {})
+            .await
+            .map_err(|e| NodeError::NodeGroupError(e.to_string()))?;
         info!("Attached to group: {:?}", response);
         Ok(())
     }
 
-    //noinspection ALL
     /// Create a new ImplNodeRpc instance
     pub fn new(rhm: Rhm, addr: SocketAddr) -> Self {
         debug!("Creating new ImplNodeRpc instance");
@@ -158,18 +170,18 @@ impl ImplNodeRpc {
 /// Main function to run the node
 #[tokio::main]
 #[allow(dead_code)]
-async fn main() -> Result<(), RhmError> {
+async fn main() -> Result<(), NodeError> {
     env_logger::Builder::from_default_env().filter_level(log::LevelFilter::Info).init();
 
     let opt = Opt::from_args();
     let addr = opt.listen;
     info!("Initializing node with address: {}", addr);
-    let rhm = Rhm::new(&addr.to_string()).await?;
+    let rhm = Rhm::new(&addr.to_string()).await.map_err(|e| NodeError::RhmError(e.to_string()))?;
     let mut node_rpc = ImplNodeRpc::new(rhm, addr);
 
     if let Some(ng_addr) = opt.ng {
         info!("NodeGroup address provided: {}", ng_addr);
-        let endpoint = get_endpoint(&ng_addr.to_string())?;
+        let endpoint = get_endpoint(&ng_addr.to_string()).map_err(|e| NodeError::InternalError(e.to_string()))?;
         node_rpc.ng = Some(endpoint.clone());
         node_rpc.attach_to_group().await?;
     } else {
@@ -178,7 +190,11 @@ async fn main() -> Result<(), RhmError> {
 
     info!("Node listening on {}", addr);
 
-    Server::builder().add_service(NodeRpcServer::new(node_rpc)).serve(addr).await?;
+    Server::builder()
+        .add_service(NodeRpcServer::new(node_rpc))
+        .serve(addr)
+        .await
+        .map_err(NodeError::TonicError)?;
 
     Ok(())
 }
