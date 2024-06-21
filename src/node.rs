@@ -85,7 +85,6 @@ impl NodeRpc for ImplNodeRpc {
         match self.ng().await.ok() {
             None => {
                 warn!("Can't replicate: NodeGroup not available");
-                error!("Can't replicate")
             },
             Some(mut client) => {
                 debug!("Sending replication request to NodeGroup");
@@ -144,6 +143,7 @@ impl ImplNodeRpc {
         Ok(())
     }
 
+    //noinspection ALL
     /// Create a new ImplNodeRpc instance
     pub fn new(rhm: Rhm, addr: SocketAddr) -> Self {
         debug!("Creating new ImplNodeRpc instance");
