@@ -4,7 +4,7 @@ A distributed node cluster management system using gRPC, implementing a replicat
 
 ## Table of Contents
 
-- [Features](#F)
+- [Features](#features)
 - [Architecture](#architecture)
 - [Getting Started](#getting-started)
   - [Prerequisites](#prerequisites)
@@ -147,5 +147,5 @@ Contributions are welcome! Please submit a pull request or open an issue to disc
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License.
 
