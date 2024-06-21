@@ -1,6 +1,14 @@
 use crate::storage::Storage;
 use std::collections::HashMap;
 use tokio::io::Result;
+use async_trait::async_trait;
+
+#[async_trait]
+pub trait StorageTrait: Send + Sync {
+    async fn new(id: &str) -> Result<Self> where Self: Sized;
+    async fn load(&self) -> Result<String>;
+    async fn save(&self, content: &str) -> Result<()>;
+}
 
 #[derive(Debug)]
 pub enum RhmResult {
@@ -21,16 +29,27 @@ impl RhmResult {
     }
 }
 
+impl PartialEq<&str> for RhmResult {
+    fn eq(&self, other: &&str) -> bool {
+        match self {
+            RhmResult::Value(s) => s == *other,
+            RhmResult::PreviousValue(s) => s == *other,
+            RhmResult::NewInsertOk => "Ok" == *other,
+            RhmResult::NoKey => "NoKey" == *other,
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct Rhm {
-    pub items: HashMap<String, String>,
+    pub strings: HashMap<String, String>,
     storage: Storage,
 }
 
 impl Rhm {
     pub async fn new(id: &str) -> Result<Self> {
         let mut rhm = Rhm {
-            items: HashMap::new(),
+            strings: HashMap::new(),
             storage: Storage::new(id).await?,
         };
         rhm.load().await?;
@@ -43,7 +62,7 @@ impl Rhm {
             let mut parts = line.splitn(3, '|');
             match (parts.next(), parts.next(), parts.next()) {
                 (Some("SET"), Some(key), Some(value)) => {
-                    self.items.insert(key.to_string(), value.to_string());
+                    self.strings.insert(key.to_string(), value.to_string());
                 }
                 _ => {}
             }
@@ -52,7 +71,7 @@ impl Rhm {
     }
 
     pub async fn set(&mut self, key: &str, value: &str) -> Result<RhmResult> {
-        let result = match self.items.insert(key.to_string(), value.to_string()) {
+        let result = match self.strings.insert(key.to_string(), value.to_string()) {
             Some(old_value) => RhmResult::PreviousValue(old_value),
             None => RhmResult::NewInsertOk,
         };
@@ -61,6 +80,27 @@ impl Rhm {
     }
 
     pub async fn get(&self, key: &str) -> RhmResult {
-        self.items.get(key).map_or(RhmResult::NoKey, |v| RhmResult::Value(v.clone()))
+        self.strings.get(key).map_or(RhmResult::NoKey, |v| RhmResult::Value(v.clone()))
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_new_rhm() {
+        let id = "test_1";
+        let rhm = Rhm::new(id).await.unwrap();
+        assert!(rhm.strings.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_set_get() {
+        let id = "test_2";
+        let mut rhm = Rhm::new(id).await.unwrap();
+        rhm.set("key1", "value1").await.unwrap();
+        assert_eq!(rhm.get("key1").await, "value1");
+    }
+
 }
