@@ -42,14 +42,14 @@ impl PartialEq<&str> for RhmResult {
 
 #[derive(Debug)]
 pub struct Rhm {
-    pub strings: HashMap<String, String>,
+    pub items: HashMap<String, String>,
     storage: Storage,
 }
 
 impl Rhm {
     pub async fn new(id: &str) -> Result<Self> {
         let mut rhm = Rhm {
-            strings: HashMap::new(),
+            items: HashMap::new(),
             storage: Storage::new(id).await?,
         };
         rhm.load().await?;
@@ -62,7 +62,7 @@ impl Rhm {
             let mut parts = line.splitn(3, '|');
             match (parts.next(), parts.next(), parts.next()) {
                 (Some("SET"), Some(key), Some(value)) => {
-                    self.strings.insert(key.to_string(), value.to_string());
+                    self.items.insert(key.to_string(), value.to_string());
                 }
                 _ => {}
             }
@@ -71,7 +71,7 @@ impl Rhm {
     }
 
     pub async fn set(&mut self, key: &str, value: &str) -> Result<RhmResult> {
-        let result = match self.strings.insert(key.to_string(), value.to_string()) {
+        let result = match self.items.insert(key.to_string(), value.to_string()) {
             Some(old_value) => RhmResult::PreviousValue(old_value),
             None => RhmResult::NewInsertOk,
         };
@@ -80,7 +80,7 @@ impl Rhm {
     }
 
     pub async fn get(&self, key: &str) -> RhmResult {
-        self.strings.get(key).map_or(RhmResult::NoKey, |v| RhmResult::Value(v.clone()))
+        self.items.get(key).map_or(RhmResult::NoKey, |v| RhmResult::Value(v.clone()))
     }
 }
 
@@ -92,7 +92,7 @@ mod tests {
     async fn test_new_rhm() {
         let id = "test_1";
         let rhm = Rhm::new(id).await.unwrap();
-        assert!(rhm.strings.is_empty());
+        assert!(rhm.items.is_empty());
     }
 
     #[tokio::test]
