@@ -1,13 +1,12 @@
 Certainly! I'll reorganize and improve your README file to make it more structured and informative. Here's an enhanced version:
 
-```markdown
 # Remote Hash Map
 
 A distributed node cluster management system using gRPC, implementing a replicated key-value store.
 
 ## Table of Contents
 
-- [Features](#features)
+- [Features](#F)
 - [Architecture](#architecture)
 - [Getting Started](#getting-started)
   - [Prerequisites](#prerequisites)
@@ -151,4 +150,3 @@ Contributions are welcome! Please submit a pull request or open an issue to disc
 ## License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
-```
