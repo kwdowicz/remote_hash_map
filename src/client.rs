@@ -42,7 +42,6 @@ pub struct Client {
     node_client: NodeRpcClient<Channel>,
 }
 
-
 impl Client {
     pub async fn connect(ng_addr: &str) -> Result<Self, RhmError> {
         let node_address = get_node_address(ng_addr).await?;
