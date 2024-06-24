@@ -1,9 +1,3 @@
-//! Node module for a distributed key-value store
-//!
-//! This module implements a node in a distributed system, providing RPC endpoints
-//! for setting and getting key-value pairs, as well as functionality for attaching
-//! to a node group for replication.
-
 use remote_hash_map::rpc::node_group_rpc::node_group_rpc_client::NodeGroupRpcClient;
 use remote_hash_map::rpc::node_group_rpc::node_group_rpc_client::NodeGroupRpcClient as NGClient;
 use remote_hash_map::rpc::node_group_rpc::{AddServerRequest, GetServerRequest, ReplicateRequest};

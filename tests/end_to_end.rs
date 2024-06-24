@@ -1,5 +1,14 @@
-use remote_hash_map::bin::node::ImplNodeRpc;
-use remote_hash_map::bin::node_group::ImplNodeGroupRpc;
+mod node {
+    include!("../src/bin/node.rs");
+}
+
+mod node_group {
+    include!("../src/bin/node_group.rs");
+}
+
+use remote_hash_map::common::client::Client;
+use node::ImplNodeRpc;
+use node_group::ImplNodeGroupRpc;
 use remote_hash_map::rpc::node_group_rpc::node_group_rpc_server::NodeGroupRpcServer;
 use remote_hash_map::rpc::node_rpc::node_rpc_server::NodeRpcServer;
 use remote_hash_map::rhm::rhm::Rhm;
@@ -85,7 +94,7 @@ async fn test_end_to_end() {
     tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
 
     // Test client
-    let mut client = remote_hash_map::Client::connect(&format!("{}", ng_ip_port)).await.unwrap();
+    let mut client = Client::connect(&format!("{}", ng_ip_port)).await.unwrap();
 
     // Test setting a fresh value
     let key = "test_key";

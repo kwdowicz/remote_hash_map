@@ -1,8 +1,3 @@
-//! Node Group module for a distributed key-value store
-//!
-//! This module implements a node group manager in a distributed system, providing RPC endpoints
-//! for adding servers, getting server information, and handling replication requests.
-
 use remote_hash_map::rpc::node_group_rpc::node_group_rpc_server::{NodeGroupRpc, NodeGroupRpcServer};
 use remote_hash_map::rpc::node_group_rpc::{AddServerRequest, AddServerResponse, GetServerRequest, GetServerResponse, ReplicateRequest, ReplicateResponse};
 use remote_hash_map::rpc::node_rpc::node_rpc_client::NodeRpcClient as NClient;
