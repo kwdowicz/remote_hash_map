@@ -48,8 +48,8 @@ The system consists of two main components:
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/kwdowicz/remote_hash_map.git
-   cd remote_hash_map
+    git clone https://github.com/kwdowicz/remote_hash_map.git
+    cd remote_hash_map
    ```
 
 2. Build the project:
@@ -80,34 +80,34 @@ Run nodes and connect them to the NodeGroup:
 
 1. Create a new project:
    ```bash
-   mkdir rhm_test && cd rhm_test
-   cargo init
-   cargo add remote_hash_map tokio
+    mkdir rhm_test && cd rhm_test
+    cargo init
+    cargo add remote_hash_map tokio
    ```
 
 2. Add the following to `src/main.rs`:
    ```rust
-   use remote_hash_map::RHMClient;
+   use remote_hash_map::common::client::Client;
 
-   #[tokio::main]
-   async fn main() -> Result<(), Box<dyn std::error::Error>> {
-       let mut client = RHMClient::connect("127.0.0.1:5000").await?;
+    #[tokio::main]
+    async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let mut client = Client::connect("127.0.0.1:5000").await?;
 
-       client.set("name", "Daria").await?;
-       client.set("name", "Tosia").await?;
-       client.set("name", "Gabi").await?;
+    client.set("name", "Daria").await?;
+    client.set("name", "Tosia").await?;
+    client.set("name", "Gabi").await?;
 
-       let result = client.get("name").await?;
-       println!("Name: {}", result);
+    let result = client.get("name").await?;
+    println!("Name: {}", result);
 
-       Ok(())
-   }
+    Ok(())
+    }
    ```
 
 3. Run the client:
-   ```bash
-   cargo run
-   ```
+```bash
+  cargo run
+```
 
 ## Docker Support
 
