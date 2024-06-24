@@ -3,21 +3,12 @@
 //! This module implements a node group manager in a distributed system, providing RPC endpoints
 //! for adding servers, getting server information, and handling replication requests.
 
-mod node_group_rpc {
-    tonic::include_proto!("node_group_rpc");
-}
+use remote_hash_map::rpc::node_group_rpc::node_group_rpc_server::{NodeGroupRpc, NodeGroupRpcServer};
+use remote_hash_map::rpc::node_group_rpc::{AddServerRequest, AddServerResponse, GetServerRequest, GetServerResponse, ReplicateRequest, ReplicateResponse};
+use remote_hash_map::rpc::node_rpc::node_rpc_client::NodeRpcClient as NClient;
+use remote_hash_map::rpc::node_rpc::{PingRequest, SetRequest};
+use remote_hash_map::common::utils::get_endpoint;
 
-mod node_rpc {
-    tonic::include_proto!("node_rpc");
-}
-
-#[path = "utils.rs"]
-pub mod utils;
-
-use crate::node_group_rpc::node_group_rpc_server::{NodeGroupRpc, NodeGroupRpcServer};
-use crate::node_group_rpc::{AddServerRequest, AddServerResponse, GetServerRequest, GetServerResponse, ReplicateRequest, ReplicateResponse};
-use crate::node_rpc::node_rpc_client::NodeRpcClient as NClient;
-use crate::node_rpc::{PingRequest, SetRequest};
 use log::{error, info, warn, debug};
 use std::collections::HashSet;
 use std::net::SocketAddr;
@@ -27,7 +18,6 @@ use structopt::StructOpt;
 use tokio::sync::Mutex;
 use tokio::time::sleep;
 use tonic::{transport::Server, Request, Response, Status};
-use utils::get_endpoint;
 use std::error::Error;
 use std::fmt;
 

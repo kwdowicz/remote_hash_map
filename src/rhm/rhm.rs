@@ -1,4 +1,4 @@
-use crate::storage::Storage;
+use crate::rhm::storage::Storage;
 use std::collections::HashMap;
 use tokio::io::Result;
 use async_trait::async_trait;

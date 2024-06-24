@@ -1,12 +1,9 @@
-#[path = "utils.rs"]
-mod utils;
-
 use std::io;
 
 use tokio::fs::{metadata, File, OpenOptions};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
-use utils::data_file;
+use crate::common::utils::data_file;
 
 #[derive(Debug)]
 pub struct Storage {

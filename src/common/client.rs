@@ -6,7 +6,7 @@
 use log::{error, info, debug};
 use tonic::transport::Channel;
 use tonic::Request;
-use crate::utils::get_endpoint;
+use crate::common::utils::get_endpoint;
 
 /// Macro for creating a new RHM client
 #[macro_export]

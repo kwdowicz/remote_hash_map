@@ -4,31 +4,14 @@
 //! for setting and getting key-value pairs, as well as functionality for attaching
 //! to a node group for replication.
 
-#[path = "node_group.rs"]
-pub mod node_group;
+use remote_hash_map::rpc::node_group_rpc::node_group_rpc_client::NodeGroupRpcClient;
+use remote_hash_map::rpc::node_group_rpc::node_group_rpc_client::NodeGroupRpcClient as NGClient;
+use remote_hash_map::rpc::node_group_rpc::{AddServerRequest, GetServerRequest, ReplicateRequest};
+use remote_hash_map::rpc::node_rpc::node_rpc_server::{NodeRpc, NodeRpcServer};
+use remote_hash_map::rpc::node_rpc::{GetRequest, GetResponse, PingRequest, PingResponse, SetRequest, SetResponse};
+use remote_hash_map::rhm::rhm::{RhmResult, Rhm};
+use remote_hash_map::common::utils::get_endpoint;
 
-#[path = "node_group_rpc.rs"]
-pub mod node_group_rpc;
-
-#[path = "node_rpc.rs"]
-pub mod node_rpc;
-
-#[path = "rhm.rs"]
-pub mod rhm;
-
-#[path = "storage.rs"]
-pub mod storage;
-
-#[path = "utils.rs"]
-pub mod utils;
-
-use crate::node_group_rpc::node_group_rpc_client::NodeGroupRpcClient;
-use crate::node_group_rpc::node_group_rpc_client::NodeGroupRpcClient as NGClient;
-use crate::node_group_rpc::{AddServerRequest, GetServerRequest, ReplicateRequest};
-use crate::node_rpc::node_rpc_server::{NodeRpc, NodeRpcServer};
-use crate::node_rpc::{GetRequest, GetResponse, PingRequest, PingResponse, SetRequest, SetResponse};
-use crate::rhm::{Rhm, RhmResult};
-use crate::utils::get_endpoint;
 use log::{debug, error, info, warn};
 use std::net::SocketAddr;
 use std::sync::Arc;

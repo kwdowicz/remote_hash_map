@@ -30,8 +30,8 @@ mockall = "0.11.4"
 
 [[bin]]
 name = "ng"
-path = "src/node_group.rs"
+path = "src/bin/node_group.rs"
 
 [[bin]]
 name = "node"
-path = "src/node.rs"
+path = "src/bin/node.rs"

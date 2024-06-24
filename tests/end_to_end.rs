@@ -1,16 +1,15 @@
-// tests/end_to_end.rs
+use remote_hash_map::bin::node::ImplNodeRpc;
+use remote_hash_map::bin::node_group::ImplNodeGroupRpc;
+use remote_hash_map::rpc::node_group_rpc::node_group_rpc_server::NodeGroupRpcServer;
+use remote_hash_map::rpc::node_rpc::node_rpc_server::NodeRpcServer;
+use remote_hash_map::rhm::rhm::Rhm;
+use remote_hash_map::common::utils::{data_file, get_endpoint};
 
-use remote_hash_map::node::ImplNodeRpc;
-use remote_hash_map::node_group::ImplNodeGroupRpc;
-use remote_hash_map::node_group_rpc::node_group_rpc_server::NodeGroupRpcServer;
-use remote_hash_map::node_rpc::node_rpc_server::NodeRpcServer;
-use remote_hash_map::rhm::Rhm;
-use remote_hash_map::utils::data_file;
 use std::fs;
 use std::net::SocketAddr;
 use tokio::sync::oneshot;
 use tonic::transport::{Server};
-use remote_hash_map::node::utils::get_endpoint;
+
 
 async fn create_node(node_ip_port: &str, ng_ip_port: &str) -> ImplNodeRpc {
     let node_addr: SocketAddr = node_ip_port.parse().unwrap();
