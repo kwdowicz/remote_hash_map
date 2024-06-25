@@ -1,11 +1,13 @@
+use remote_hash_map::common::utils::get_endpoint;
 use remote_hash_map::rpc::node_group_rpc::node_group_rpc_server::{NodeGroupRpc, NodeGroupRpcServer};
 use remote_hash_map::rpc::node_group_rpc::{AddServerRequest, AddServerResponse, GetServerRequest, GetServerResponse, ReplicateRequest, ReplicateResponse};
 use remote_hash_map::rpc::node_rpc::node_rpc_client::NodeRpcClient as NClient;
 use remote_hash_map::rpc::node_rpc::{PingRequest, SetRequest};
-use remote_hash_map::common::utils::get_endpoint;
 
-use log::{error, info, warn, debug};
+use log::{debug, error, info, warn};
 use std::collections::HashSet;
+use std::error::Error;
+use std::fmt;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
@@ -13,8 +15,6 @@ use structopt::StructOpt;
 use tokio::sync::Mutex;
 use tokio::time::sleep;
 use tonic::{transport::Server, Request, Response, Status};
-use std::error::Error;
-use std::fmt;
 
 /// Custom error type for ping operations
 #[allow(dead_code)]
@@ -63,13 +63,15 @@ impl NodeGroupRpc for ImplNodeGroupRpc {
     async fn add_server(&self, request: Request<AddServerRequest>) -> Result<Response<AddServerResponse>, Status> {
         let req = request.into_inner();
         let mut nodes = self.nodes.lock().await;
-        req.addr.parse::<SocketAddr>()
+        req.addr
+            .parse::<SocketAddr>()
             .map(|socket| {
                 info!("Adding node: {}", socket);
                 nodes.insert(socket);
                 Response::new(AddServerResponse {
                     result: format!("Added {} to node group", socket),
                 })
+                // TODO: Check if other nodes exist if yes then start replicating to them previous messages
             })
             .map_err(|e| {
                 error!("Failed to add server: {}", e);
@@ -93,10 +95,7 @@ impl NodeGroupRpc for ImplNodeGroupRpc {
         let request = request.into_inner();
         let source_addr: SocketAddr = request.source.parse().map_err(|_| Status::invalid_argument("Invalid source address"))?;
 
-        let nodes_to_replicate: Vec<String> = nodes.iter()
-            .filter(|&addr| *addr != source_addr)
-            .map(ToString::to_string)
-            .collect();
+        let nodes_to_replicate: Vec<String> = nodes.iter().filter(|&addr| *addr != source_addr).map(ToString::to_string).collect();
 
         info!("Nodes to replicate to: {:?}", nodes_to_replicate);
 
@@ -159,11 +158,13 @@ impl ImplNodeGroupRpc {
         debug!("Replicating to node: {}", node);
         let endpoint = get_endpoint(node)?;
         let mut client = NClient::connect(endpoint).await?;
-        client.set(SetRequest {
-            key: key.to_string(),
-            value: value.to_string(),
-            replication: true,
-        }).await?;
+        client
+            .set(SetRequest {
+                key: key.to_string(),
+                value: value.to_string(),
+                replication: true,
+            })
+            .await?;
         debug!("Replication successful for node: {}", node);
         Ok(())
     }
@@ -181,9 +182,7 @@ impl ImplNodeGroupRpc {
 #[tokio::main]
 #[allow(dead_code)]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    env_logger::Builder::from_default_env()
-        .filter_level(log::LevelFilter::Info)
-        .init();
+    env_logger::Builder::from_default_env().filter_level(log::LevelFilter::Info).init();
 
     let opt = Opt::from_args();
     let addr = opt.listen;
@@ -200,10 +199,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     info!("NodeGroup listening on {}", addr);
 
-    Server::builder()
-        .add_service(NodeGroupRpcServer::new(node_group_rpc))
-        .serve(addr)
-        .await?;
+    Server::builder().add_service(NodeGroupRpcServer::new(node_group_rpc)).serve(addr).await?;
 
     Ok(())
 }

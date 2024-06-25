@@ -1,11 +1,13 @@
 use crate::rhm::storage::Storage;
+use async_trait::async_trait;
 use std::collections::HashMap;
 use tokio::io::Result;
-use async_trait::async_trait;
 
 #[async_trait]
 pub trait StorageTrait: Send + Sync {
-    async fn new(id: &str) -> Result<Self> where Self: Sized;
+    async fn new(id: &str) -> Result<Self>
+    where
+        Self: Sized;
     async fn load(&self) -> Result<String>;
     async fn save(&self, content: &str) -> Result<()>;
 }
@@ -102,5 +104,4 @@ mod tests {
         rhm.set("key1", "value1").await.unwrap();
         assert_eq!(rhm.get("key1").await, "value1");
     }
-
 }

@@ -6,19 +6,18 @@ mod node_group {
     include!("../src/bin/node_group.rs");
 }
 
-use remote_hash_map::common::client::Client;
 use node::ImplNodeRpc;
 use node_group::ImplNodeGroupRpc;
+use remote_hash_map::common::client::Client;
+use remote_hash_map::common::utils::{data_file, get_endpoint};
+use remote_hash_map::rhm::rhm::Rhm;
 use remote_hash_map::rpc::node_group_rpc::node_group_rpc_server::NodeGroupRpcServer;
 use remote_hash_map::rpc::node_rpc::node_rpc_server::NodeRpcServer;
-use remote_hash_map::rhm::rhm::Rhm;
-use remote_hash_map::common::utils::{data_file, get_endpoint};
 
 use std::fs;
 use std::net::SocketAddr;
 use tokio::sync::oneshot;
-use tonic::transport::{Server};
-
+use tonic::transport::Server;
 
 async fn create_node(node_ip_port: &str, ng_ip_port: &str) -> ImplNodeRpc {
     let node_addr: SocketAddr = node_ip_port.parse().unwrap();
@@ -30,14 +29,19 @@ async fn create_node(node_ip_port: &str, ng_ip_port: &str) -> ImplNodeRpc {
     node_rpc
 }
 
+const NG_IP_PORT: &str = "127.0.0.1:7000";
+const NODE1_IP_PORT: &str = "127.0.0.1:7001";
+const NODE2_IP_PORT: &str = "127.0.0.1:7002";
+
 #[tokio::test]
 async fn test_end_to_end() {
     let _ = env_logger::builder().is_test(true).try_init();
+    let _cleanup = TestCleanup;
 
     // Start NodeGroup server
-    let ng_ip_port = "127.0.0.1:7000";
-    let node1_ip_port = "127.0.0.1:7001";
-    let node2_ip_port = "127.0.0.1:7002";
+    let ng_ip_port = NG_IP_PORT;
+    let node1_ip_port = NODE1_IP_PORT;
+    let node2_ip_port = NODE2_IP_PORT;
 
     let node_group_addr: SocketAddr = ng_ip_port.parse().unwrap();
     let node_group_rpc = ImplNodeGroupRpc::new();
@@ -91,7 +95,7 @@ async fn test_end_to_end() {
     });
 
     // Allow the server to start
-    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+    tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
 
     // Test client
     let mut client = Client::connect(&format!("{}", ng_ip_port)).await.unwrap();
@@ -121,13 +125,26 @@ async fn test_end_to_end() {
     node1_tx.send(()).unwrap();
 
     // Test if removed from the group
-    // TODO
+    // TODO: it might not work due to shutting down the server and checking ng node count
+    // let mut ng = NodeGroupRpcClient::connect(format!("http://{}", ng_ip_port)).await.unwrap();
+    // let mut res = ng.get_server(GetServerRequest {}).await.unwrap();
+    // let res = res.into_inner();
+    // assert_eq!(res.result.len(), 1);
+
+    // TODO: After adding a new server, all messages should be replicated
 
     // Shutdown rest
     node2_tx.send(()).unwrap();
     node_group_tx.send(()).unwrap();
+}
 
-    // Delete the storage file
-    fs::remove_file(data_file(node1_ip_port)).unwrap();
-    fs::remove_file(data_file(node2_ip_port)).unwrap();
+struct TestCleanup;
+
+impl Drop for TestCleanup {
+    fn drop(&mut self) {
+        println!("Running cleanup code...");
+        // Delete the storage file
+        fs::remove_file(data_file(NODE1_IP_PORT)).unwrap();
+        fs::remove_file(data_file(NODE2_IP_PORT)).unwrap();
+    }
 }

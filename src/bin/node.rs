@@ -1,10 +1,10 @@
+use remote_hash_map::common::utils::get_endpoint;
+use remote_hash_map::rhm::rhm::{Rhm, RhmResult};
 use remote_hash_map::rpc::node_group_rpc::node_group_rpc_client::NodeGroupRpcClient;
 use remote_hash_map::rpc::node_group_rpc::node_group_rpc_client::NodeGroupRpcClient as NGClient;
 use remote_hash_map::rpc::node_group_rpc::{AddServerRequest, GetServerRequest, ReplicateRequest};
 use remote_hash_map::rpc::node_rpc::node_rpc_server::{NodeRpc, NodeRpcServer};
 use remote_hash_map::rpc::node_rpc::{GetRequest, GetResponse, PingRequest, PingResponse, SetRequest, SetResponse};
-use remote_hash_map::rhm::rhm::{RhmResult, Rhm};
-use remote_hash_map::common::utils::get_endpoint;
 
 use log::{debug, error, info, warn};
 use std::net::SocketAddr;
@@ -79,7 +79,7 @@ impl NodeRpc for ImplNodeRpc {
                     .await
                     .map_err(|e| Status::internal(format!("Replication failed: {}", e)))?;
                 info!("Replication request sent successfully for key: {}", req.key);
-            },
+            }
             Err(e) => {
                 warn!("Can't replicate: NodeGroup not available: {}", e);
             }
@@ -97,10 +97,7 @@ impl NodeRpc for ImplNodeRpc {
 
         let found = matches!(result, RhmResult::Value(_));
         info!("Get request result: key = {}, found = {}", req.key, found);
-        Ok(Response::new(GetResponse {
-            value: result.value(),
-            found,
-        }))
+        Ok(Response::new(GetResponse { value: result.value(), found }))
     }
 
     /// Handle a ping request
@@ -123,12 +120,11 @@ impl ImplNodeRpc {
     pub async fn attach_to_group(&self) -> Result<(), NodeError> {
         info!("Attaching to NodeGroup");
         let mut client = self.ng().await?;
-        client.add_server(AddServerRequest { addr: self.addr.to_string() })
+        client
+            .add_server(AddServerRequest { addr: self.addr.to_string() })
             .await
             .map_err(|e| NodeError::NodeGroupError(e.to_string()))?;
-        let response = client.get_server(GetServerRequest {})
-            .await
-            .map_err(|e| NodeError::NodeGroupError(e.to_string()))?;
+        let response = client.get_server(GetServerRequest {}).await.map_err(|e| NodeError::NodeGroupError(e.to_string()))?;
         info!("Attached to group: {:?}", response);
         Ok(())
     }
@@ -167,11 +163,7 @@ async fn main() -> Result<(), NodeError> {
 
     info!("Node listening on {}", addr);
 
-    Server::builder()
-        .add_service(NodeRpcServer::new(node_rpc))
-        .serve(addr)
-        .await
-        .map_err(NodeError::TonicError)?;
+    Server::builder().add_service(NodeRpcServer::new(node_rpc)).serve(addr).await.map_err(NodeError::TonicError)?;
 
     Ok(())
 }

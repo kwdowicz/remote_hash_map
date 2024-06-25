@@ -3,10 +3,10 @@
 //! This module provides a client interface for interacting with a distributed key-value store.
 //! It includes a macro for easy client creation and structs for RPC communication.
 
-use log::{error, info, debug};
+use crate::common::utils::get_endpoint;
+use log::{debug, error, info};
 use tonic::transport::Channel;
 use tonic::Request;
-use crate::common::utils::get_endpoint;
 
 /// Macro for creating a new RHM client
 #[macro_export]
@@ -16,7 +16,7 @@ macro_rules! rhm {
             Ok(client) => {
                 info!("Successfully connected to {}:{}", $ip, $port);
                 client
-            },
+            }
             Err(e) => {
                 error!("Failed to connect to {}:{}: {}", $ip, $port, e);
                 return Err(e.into());
@@ -28,7 +28,7 @@ macro_rules! rhm {
             Ok(client) => {
                 info!("Successfully connected to {}", $address);
                 client
-            },
+            }
             Err(e) => {
                 error!("Failed to connect to {}: {}", $address, e);
                 return Err(e.into());
@@ -67,9 +67,7 @@ impl Client {
         let node_address = get_node_address(ng_addr).await?;
         info!("Connecting to node at {}", node_address);
         let node_client = NodeRpcClient::connect(node_address).await?;
-        Ok(Self {
-            node_client,
-        })
+        Ok(Self { node_client })
     }
 
     /// Set a key-value pair in the store
