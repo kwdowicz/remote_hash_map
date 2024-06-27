@@ -15,6 +15,9 @@ use structopt::StructOpt;
 use tokio::sync::Mutex;
 use tokio::time::sleep;
 use tonic::{transport::Server, Request, Response, Status};
+use tonic_reflection::server::Builder as ReflectionBuilder;
+
+pub const FILE_DESCRIPTOR_SET: &[u8] = include_bytes!("../../proto/node_group_rpc_descriptor.bin");
 
 /// Custom error type for ping operations
 #[allow(dead_code)]
@@ -197,9 +200,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     });
 
+    let reflection_service = match ReflectionBuilder::configure().register_encoded_file_descriptor_set(FILE_DESCRIPTOR_SET).build() {
+        Ok(service) => service,
+        Err(e) => {
+            eprintln!("Failed to build reflection service: {}", e);
+            panic!()
+        }
+    };
+
     info!("NodeGroup listening on {}", addr);
 
-    Server::builder().add_service(NodeGroupRpcServer::new(node_group_rpc)).serve(addr).await?;
+    Server::builder()
+        .add_service(NodeGroupRpcServer::new(node_group_rpc))
+        .add_service(reflection_service)
+        .serve(addr)
+        .await?;
 
     Ok(())
 }

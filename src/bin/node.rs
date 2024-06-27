@@ -14,6 +14,9 @@ use thiserror::Error;
 use tokio::sync::Mutex;
 use tonic::transport::{Channel, Endpoint, Server};
 use tonic::{Request, Response, Status};
+use tonic_reflection::server::Builder as ReflectionBuilder;
+
+pub const FILE_DESCRIPTOR_SET: &[u8] = include_bytes!("../../proto/node_rpc_descriptor.bin");
 
 #[derive(Error, Debug)]
 pub enum NodeError {
@@ -163,7 +166,20 @@ async fn main() -> Result<(), NodeError> {
 
     info!("Node listening on {}", addr);
 
-    Server::builder().add_service(NodeRpcServer::new(node_rpc)).serve(addr).await.map_err(NodeError::TonicError)?;
+    let reflection_service = match ReflectionBuilder::configure().register_encoded_file_descriptor_set(FILE_DESCRIPTOR_SET).build() {
+        Ok(service) => service,
+        Err(e) => {
+            eprintln!("Failed to build reflection service: {}", e);
+            panic!()
+        }
+    };
+
+    Server::builder()
+        .add_service(NodeRpcServer::new(node_rpc))
+        .add_service(reflection_service)
+        .serve(addr)
+        .await
+        .map_err(NodeError::TonicError)?;
 
     Ok(())
 }

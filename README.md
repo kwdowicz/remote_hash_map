@@ -109,6 +109,12 @@ Run nodes and connect them to the NodeGroup:
   cargo run
 ```
 
+## Using grpcurl example
+```bash
+grpcurl -plaintext -d '{"key": "name", "value": "Tas", "replication": true }' 127.0.0.1:5021 node_rpc.NodeRpc/Set
+grpcurl -plaintext -d '{}' 127.0.0.1:5000 node_group_rpc.NodeGroupRpc/GetServer
+```
+
 ## Docker Support
 
 Build and run using Docker:

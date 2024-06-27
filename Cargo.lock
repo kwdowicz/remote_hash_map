@@ -1090,7 +1090,7 @@ checksum = "7a66a03ae7c801facd77a29370b4faec201768915ac14a721ba36f20bc9c209b"
 
 [[package]]
 name = "remote_hash_map"
-version = "0.1.5"
+version = "0.2.5"
 dependencies = [
  "async-trait",
  "chrono",
@@ -1104,6 +1104,7 @@ dependencies = [
  "tokio",
  "tonic",
  "tonic-build",
+ "tonic-reflection",
 ]
 
 [[package]]
@@ -1398,6 +1399,19 @@ dependencies = [
  "prost-build",
  "quote",
  "syn 2.0.66",
+]
+
+[[package]]
+name = "tonic-reflection"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "548c227bd5c0fae5925812c4ec6c66ffcfced23ea370cb823f4d18f0fc1cb6a7"
+dependencies = [
+ "prost",
+ "prost-types",
+ "tokio",
+ "tokio-stream",
+ "tonic",
 ]
 
 [[package]]
