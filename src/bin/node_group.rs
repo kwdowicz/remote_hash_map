@@ -1,21 +1,4 @@
-use remote_hash_map::common::utils::get_endpoint;
-use remote_hash_map::rpc::node_group_rpc::node_group_rpc_server::{NodeGroupRpc, NodeGroupRpcServer};
-use remote_hash_map::rpc::node_group_rpc::{AddServerRequest, AddServerResponse, GetServerRequest, GetServerResponse, ReplicateRequest, ReplicateResponse};
-use remote_hash_map::rpc::node_rpc::node_rpc_client::NodeRpcClient as NClient;
-use remote_hash_map::rpc::node_rpc::{PingRequest, SetRequest};
-
-use log::{debug, error, info, warn};
-use std::collections::HashSet;
-use std::error::Error;
-use std::fmt;
-use std::net::SocketAddr;
-use std::sync::Arc;
-use std::time::Duration;
-use structopt::StructOpt;
-use tokio::sync::Mutex;
-use tokio::time::sleep;
-use tonic::{transport::Server, Request, Response, Status};
-use tonic_reflection::server::Builder as ReflectionBuilder;
+use remote_hash_map::common::*;
 
 pub const FILE_DESCRIPTOR_SET: &[u8] = include_bytes!("../../proto/node_group_rpc_descriptor.bin");
 

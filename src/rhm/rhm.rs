@@ -1,16 +1,13 @@
-use crate::rhm::storage::Storage;
-use async_trait::async_trait;
-use std::collections::HashMap;
-use tokio::io::Result;
+use crate::common::*;
 
-#[async_trait]
-pub trait StorageTrait: Send + Sync {
-    async fn new(id: &str) -> Result<Self>
-    where
-        Self: Sized;
-    async fn load(&self) -> Result<String>;
-    async fn save(&self, content: &str) -> Result<()>;
-}
+// #[async_trait]
+// pub trait StorageTrait: Send + Sync {
+//     async fn new(id: &str) -> Result<Self>
+//     where
+//         Self: Sized;
+//     async fn load(&self) -> Result<String>;
+//     async fn save(&self, content: &str) -> Result<()>;
+// }
 
 #[derive(Debug)]
 pub enum RhmResult {
@@ -49,7 +46,7 @@ pub struct Rhm {
 }
 
 impl Rhm {
-    pub async fn new(id: &str) -> Result<Self> {
+    pub async fn new(id: &str) -> TResult<Self> {
         let mut rhm = Rhm {
             items: HashMap::new(),
             storage: Storage::new(id).await?,
@@ -58,21 +55,18 @@ impl Rhm {
         Ok(rhm)
     }
 
-    async fn load(&mut self) -> Result<()> {
+    async fn load(&mut self) -> TResult<()> {
         let contents = self.storage.load().await?;
         for line in contents.lines() {
             let mut parts = line.splitn(3, '|');
-            match (parts.next(), parts.next(), parts.next()) {
-                (Some("SET"), Some(key), Some(value)) => {
-                    self.items.insert(key.to_string(), value.to_string());
-                }
-                _ => {}
+            if let (Some("SET"), Some(key), Some(value)) = (parts.next(), parts.next(), parts.next()) {
+                self.items.insert(key.to_string(), value.to_string());
             }
         }
         Ok(())
     }
 
-    pub async fn set(&mut self, key: &str, value: &str) -> Result<RhmResult> {
+    pub async fn set(&mut self, key: &str, value: &str) -> TResult<RhmResult> {
         let result = match self.items.insert(key.to_string(), value.to_string()) {
             Some(old_value) => RhmResult::PreviousValue(old_value),
             None => RhmResult::NewInsertOk,

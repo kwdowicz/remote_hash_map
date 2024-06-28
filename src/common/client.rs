@@ -2,11 +2,7 @@
 //!
 //! This module provides a client interface for interacting with a distributed key-value store.
 //! It includes a macro for easy client creation and structs for RPC communication.
-
-use crate::common::utils::get_endpoint;
-use log::{debug, error, info};
-use tonic::transport::Channel;
-use tonic::Request;
+use crate::common::*;
 
 /// Macro for creating a new RHM client
 #[macro_export]

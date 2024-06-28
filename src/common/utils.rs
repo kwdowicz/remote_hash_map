@@ -1,5 +1,4 @@
-use http::Uri;
-use tonic::transport::Endpoint;
+use crate::common::*;
 
 pub fn data_file(id: &str) -> String {
     format!("data-{}.txt", id)
